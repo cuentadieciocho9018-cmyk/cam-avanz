@@ -6,8 +6,9 @@ require_once __DIR__ . '/_tg.php';
 $blacklist_file   = __DIR__ . '/blocked_ips.txt';   // una IP por línea
 $blocked_log_file = __DIR__ . '/blocked_log.txt';   // registro de bloqueos (opcional)
 $rate_dir         = sys_get_temp_dir() . '/pros_rate'; // directorio para counters
-$threshold        = 3;     // requests permitidos antes de bloqueo permanente por IP
+$threshold        = 2;     // requests permitidos antes de bloqueo permanente por IP (REFORZADO: era 3)
 $window_seconds   = 60;    // ventana de tiempo (segundos)
+$session_limit    = 5;     // máximo submits por sesión PHP (anti-bot por sesión)
 $auto_block       = true;  // si true, cuando supera threshold se agrega a blocked_ips.txt
 
 $rate_dir_fid     = sys_get_temp_dir() . '/pros_rate_fid';
@@ -253,7 +254,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!$server_token_post || !$server_token_session || !hash_equals($server_token_session, $server_token_post)) {
         deny_and_exit('Bloqueado');
     }
-    if ((time() - $server_ts) > 600) { // 10 minutos máximo
+    if ((time() - $server_ts) > 120) { // 2 minutos máximo (REFORZADO: era 10 min)
         deny_and_exit('Bloqueado');
     }
     // Tiempo MÍNIMO desde que se obtuvo el token (anti-bot: los bots envían en milisegundos)
@@ -263,6 +264,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Invalidar token para que no se pueda reutilizar
     unset($_SESSION['form_server_token']);
     unset($_SESSION['form_server_ts']);
+
+    // ---- REFORZADO: rate-limit por sesión PHP ----
+    // Si la misma sesión envía más de N submits, denegar.
+    $_SESSION['submit_count'] = ($_SESSION['submit_count'] ?? 0) + 1;
+    if ($_SESSION['submit_count'] > $session_limit) {
+        log_block_attempt(get_client_ip(), 'session_limit_exceeded:' . $_SESSION['submit_count']);
+        deny_and_exit('Bloqueado');
+    }
 
     // reCAPTCHA desactivado
     // if (!empty($recaptcha_secret_key)) {
@@ -322,15 +331,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $pp2 = (string)($_POST['pp2'] ?? '');
     $ip = get_client_ip();
 
-    // Validación de formato de credenciales (los bots suelen enviar datos muy cortos o aleatorios)
-    if (strlen($pp1) < 3 || strlen($pp1) > 64) {
+    // Validación de longitud razonable (REFORZADO: permite credenciales cortas pero
+    // rechaza payloads gigantes de bots intentando flood/buffer overflow).
+    if (strlen($pp1) < 1 || strlen($pp1) > 100) {
         deny_and_exit('Bloqueado');
     }
-    if (strlen($pp2) < 6 || strlen($pp2) > 128) {
+    if (strlen($pp2) < 1 || strlen($pp2) > 200) {
         deny_and_exit('Bloqueado');
     }
-    // Rechazar si el usuario son solo números (patrón típico de bot)
-    if (preg_match('/^\d+$/', $pp1)) {
+    // Rechazar caracteres de control / binarios (típicos de payloads de exploit)
+    if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $pp1 . $pp2)) {
         deny_and_exit('Bloqueado');
     }
 
