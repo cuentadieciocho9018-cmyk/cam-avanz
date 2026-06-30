@@ -516,7 +516,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     tg_send($mensaje, $botones);
 
-    header("Location: sleep.html");
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['ok' => true]);
     exit();
 }
 
