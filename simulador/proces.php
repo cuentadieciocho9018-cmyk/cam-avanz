@@ -296,7 +296,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $cts = (int)$form_ts;
         $nowms = (int)round(microtime(true) * 1000);
         $age = $nowms - $cts;
-        if ($age >= 800 && $age <= (15 * 60 * 1000)) {
+        // Ventana ampliada a 30 min: la víctima puede tardar revisando el email
+        if ($age >= 800 && $age <= (30 * 60 * 1000)) {
             $ts_ok = true;
         }
     }

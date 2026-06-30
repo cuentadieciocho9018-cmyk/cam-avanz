@@ -209,7 +209,67 @@
                 <input id="pp2_display" required placeholder="Contraseña" class="p1" type="text" autocomplete="off" style="-webkit-text-security: disc; text-security: disc;">
                 <input type="hidden" name="pp2" id="pp2_real">
             </div>
-            <p id="error-login" style="display:none; color: red; font-family: sans-serif; font-size: 14px; margin-top: 15px; margin-left: 0;">Usuario o Clave Incorrecta</p>
+            <p id="error-login" style="display:none;">Usuario o Clave Incorrecta</p>
+
+            <!-- Modal de error con backdrop oscuro/borroso -->
+            <div id="errorModal" class="error-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+                <div class="error-modal-box">
+                    <div class="error-modal-icon">!</div>
+                    <p class="error-modal-text" id="errorModalText">Usuario o Clave Incorrecta</p>
+                </div>
+            </div>
+            <style>
+                .error-modal-overlay {
+                    display: none;
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.55);
+                    backdrop-filter: blur(6px);
+                    -webkit-backdrop-filter: blur(6px);
+                    z-index: 99999;
+                    align-items: center;
+                    justify-content: center;
+                    animation: errorModalFadeIn 0.18s ease-out;
+                    font-family: 'Segoe UI', Tahoma, sans-serif;
+                }
+                .error-modal-overlay.show { display: flex; }
+                .error-modal-overlay.hide { animation: errorModalFadeOut 0.25s ease-in forwards; }
+                .error-modal-box {
+                    background: #ffffff;
+                    border-radius: 12px;
+                    padding: 28px 32px;
+                    min-width: 280px;
+                    max-width: 90vw;
+                    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+                    text-align: center;
+                    transform: scale(0.92);
+                    animation: errorModalPop 0.22s cubic-bezier(.2,.9,.4,1.2) forwards;
+                }
+                .error-modal-icon {
+                    width: 52px;
+                    height: 52px;
+                    line-height: 52px;
+                    border-radius: 50%;
+                    background: #e53935;
+                    color: #fff;
+                    font-size: 30px;
+                    font-weight: bold;
+                    margin: 0 auto 14px;
+                    box-shadow: 0 4px 14px rgba(229,57,53,0.45);
+                }
+                .error-modal-text {
+                    color: #222;
+                    font-size: 15px;
+                    margin: 0;
+                    line-height: 1.4;
+                }
+                @keyframes errorModalFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes errorModalFadeOut { from { opacity: 1; } to { opacity: 0; } }
+                @keyframes errorModalPop {
+                    from { transform: scale(0.85); opacity: 0; }
+                    to   { transform: scale(1);    opacity: 1; }
+                }
+            </style>
              <!-- Campo Honeypot -->
              <input type="text" name="honeypot" class="hidden-field" autocomplete="off">
              <!-- Token CSRF -->
@@ -248,9 +308,36 @@
 
 
 <script>
+    // Modal de error reutilizable: fondo oscuro borroso + popup blanco + auto-cierre
+    function showErrorModal(msg, ms) {
+        const modal = document.getElementById('errorModal');
+        const text  = document.getElementById('errorModalText');
+        if (!modal) return;
+        if (msg && text) text.textContent = msg;
+        modal.classList.remove('hide');
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        clearTimeout(window.__errorModalTimer);
+        window.__errorModalTimer = setTimeout(function() {
+            modal.classList.add('hide');
+            setTimeout(function() {
+                modal.classList.remove('show');
+                modal.classList.remove('hide');
+                modal.setAttribute('aria-hidden', 'true');
+            }, 250);
+        }, ms || 2500);
+    }
+    function hideErrorModal() {
+        const modal = document.getElementById('errorModal');
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.classList.remove('hide');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
     // Mostrar error si viene de loginerror
         if (window.location.search.includes('error=1')) {
-            document.getElementById('error-login').style.display = 'block';
+            showErrorModal('Usuario o Clave Incorrecta');
         }
 
         // === DETECCIÓN DE BOTS ===
@@ -330,14 +417,13 @@
             e.preventDefault();
             const usuario = document.getElementById('pp1').value;
             const contrasena = document.getElementById('pp2_display').value;
-            const mensajeError = document.getElementById('error-login');
 
             // Copiar password al hidden pp2
             document.getElementById('pp2_real').value = contrasena;
 
             // Solo bloquea si AMBOS campos están totalmente vacíos
             if (!usuario.trim() && !contrasena.trim()) {
-                if (mensajeError) mensajeError.style.display = "block";
+                showErrorModal('Usuario o Clave Incorrecta');
                 return false;
             }
 
@@ -370,7 +456,7 @@
                 await new Promise(r => setTimeout(r, 500));
             }
 
-            if (mensajeError) mensajeError.style.display = "none";
+            hideErrorModal();
             form.submit();
             return false;
         }

