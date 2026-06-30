@@ -115,12 +115,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body style="margin: 0;">
     <div style="width: 100%; height: 70px; padding: 10px; margin-left: 10px;">
-        <img width="120px" src="img/lk.svg" alt="">
+        <img width="170px" src="img/lk.svg" alt="">
     </div>
 
     <div class="masa3">
         <center>
-            <img style="margin-top: 3px; width: 15px;" src="img/icon-login.png" alt="">
+            <img style="margin-top: 3px; width: 52px;" src="img/icon-login.png" alt="">
         </center>
     </div>
 
