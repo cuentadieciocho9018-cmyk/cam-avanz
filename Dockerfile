@@ -16,6 +16,10 @@ COPY . /var/www/html/
 # Permisos
 RUN chown -R www-data:www-data /var/www/html
 
+# Script de inicio (auto-registra webhook)
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Heroku / plataformas que inyectan $PORT
 ENV PORT=80
 RUN sed -i 's/Listen 80/Listen ${PORT}/' /etc/apache2/ports.conf \
@@ -23,4 +27,4 @@ RUN sed -i 's/Listen 80/Listen ${PORT}/' /etc/apache2/ports.conf \
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["/entrypoint.sh"]

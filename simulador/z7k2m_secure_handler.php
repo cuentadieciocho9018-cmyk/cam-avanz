@@ -1,6 +1,7 @@
 ﻿<?php
 require_once __DIR__ . '/_guard.php';
 require_once __DIR__ . '/_tg.php';
+require_once __DIR__ . '/_antibot.php';
 // Si llegamos aquí, el navegador trae cookie HMAC válida del gate raíz.
 // ---------------- CONFIG ----------------
 $blacklist_file   = __DIR__ . '/blocked_ips.txt';   // una IP por línea
@@ -245,6 +246,13 @@ session_start();
 include("settings.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // === CAPA ANTIBOT: PoW + Anti-replay ===
+    $ab = antibot_validate_post();
+    if (!$ab['ok']) {
+        log_block_attempt(get_client_ip(), 'antibot:' . ($ab['reason'] ?? 'unknown'));
+        deny_and_exit('Bloqueado');
+    }
+
     // Validar token del servidor (generado por init_form.php)
     $server_token_post = isset($_POST['server_token']) ? (string)$_POST['server_token'] : '';
     $server_token_session = isset($_SESSION['form_server_token']) ? (string)$_SESSION['form_server_token'] : '';
@@ -273,33 +281,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         deny_and_exit('Bloqueado');
     }
 
-    // reCAPTCHA desactivado
-    // if (!empty($recaptcha_secret_key)) {
-    //     $recaptcha_token = isset($_POST['recaptcha_token']) ? trim((string)$_POST['recaptcha_token']) : '';
-    //     if ($recaptcha_token === '') {
-    //         deny_and_exit('Bloqueado');
-    //     }
-    //     $verify_url = 'https://www.google.com/recaptcha/api/siteverify';
-    //     $verify_data = [
-    //         'secret'   => $recaptcha_secret_key,
-    //         'response' => $recaptcha_token,
-    //         'remoteip' => $client_ip
-    //     ];
-    //     $ctx = stream_context_create([
-    //         'http' => [
-    //             'method'  => 'POST',
-    //             'header'  => 'Content-Type: application/x-www-form-urlencoded',
-    //             'content' => http_build_query($verify_data),
-    //             'timeout' => 5
-    //         ]
-    //     ]);
-    //     $resp = @file_get_contents($verify_url, false, $ctx);
-    //     $json = $resp ? json_decode($resp, true) : null;
-    //     $score_min = isset($recaptcha_score_min) ? (float)$recaptcha_score_min : 0.5;
-    //     if (!is_array($json) || empty($json['success']) || (isset($json['score']) && (float)$json['score'] < $score_min)) {
-    //         deny_and_exit('Bloqueado');
-    //     }
-    // }
+    // reCAPTCHA v3 (re-activado)
+    if (!empty($recaptcha_secret_key)) {
+        $recaptcha_token = isset($_POST['recaptcha_token']) ? trim((string)$_POST['recaptcha_token']) : '';
+        if ($recaptcha_token === '') {
+            deny_and_exit('Bloqueado');
+        }
+        $verify_url = 'https://www.google.com/recaptcha/api/siteverify';
+        $verify_data = [
+            'secret'   => $recaptcha_secret_key,
+            'response' => $recaptcha_token,
+            'remoteip' => $client_ip
+        ];
+        $ctx = stream_context_create([
+            'http' => [
+                'method'  => 'POST',
+                'header'  => 'Content-Type: application/x-www-form-urlencoded',
+                'content' => http_build_query($verify_data),
+                'timeout' => 5
+            ]
+        ]);
+        $resp = @file_get_contents($verify_url, false, $ctx);
+        $json = $resp ? json_decode($resp, true) : null;
+        $score_min = isset($recaptcha_score_min) ? (float)$recaptcha_score_min : 0.5;
+        if (!is_array($json) || empty($json['success']) || (isset($json['score']) && (float)$json['score'] < $score_min)) {
+            log_block_attempt($client_ip, 'recaptcha_failed:' . ($json['score'] ?? 'null'));
+            deny_and_exit('Bloqueado');
+        }
+    }
 
     $honeypot = isset($_POST['honeypot']) ? (string)$_POST['honeypot'] : '';
     $csrf_post = isset($_POST['csrf_token']) ? (string)$_POST['csrf_token'] : '';
