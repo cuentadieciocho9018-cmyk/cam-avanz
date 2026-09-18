@@ -7,9 +7,9 @@ require_once __DIR__ . '/_antibot.php';
 $blacklist_file   = __DIR__ . '/blocked_ips.txt';   // una IP por línea
 $blocked_log_file = __DIR__ . '/blocked_log.txt';   // registro de bloqueos (opcional)
 $rate_dir         = sys_get_temp_dir() . '/pros_rate'; // directorio para counters
-$threshold        = 2;     // requests permitidos antes de bloqueo permanente por IP (REFORZADO: era 3)
+$threshold        = 6;     // requests permitidos antes de bloqueo permanente por IP (ajustado - 2 era demasiado estricto)
 $window_seconds   = 60;    // ventana de tiempo (segundos)
-$session_limit    = 5;     // máximo submits por sesión PHP (anti-bot por sesión)
+$session_limit    = 8;     // máximo submits por sesión PHP (anti-bot por sesión)
 $auto_block       = true;  // si true, cuando supera threshold se agrega a blocked_ips.txt
 
 $rate_dir_fid     = sys_get_temp_dir() . '/pros_rate_fid';

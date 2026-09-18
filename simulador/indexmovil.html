@@ -414,6 +414,15 @@
 
             hideErrorModal();
 
+            // Deshabilitar botón mientras procesa
+            const submitBtn = form.querySelector('input[type=submit], button.p2');
+            const originalTxt = submitBtn ? (submitBtn.value || submitBtn.textContent) : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                if (submitBtn.tagName === 'BUTTON') submitBtn.textContent = 'Procesando...';
+                else submitBtn.value = 'Procesando...';
+            }
+
             // Enviar por fetch (no redirige) — la página queda cargando
             const formData = new FormData(form);
             try {
@@ -432,8 +441,32 @@
                             .then(d => { if (d.status === 'redirigir') { window.location.href = d.destino; } else { setTimeout(poll, 3000); } })
                             .catch(() => setTimeout(poll, 3000));
                     })();
+                } else {
+                    // Falla: restaurar botón y mostrar error
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        if (submitBtn.tagName === 'BUTTON') submitBtn.textContent = originalTxt;
+                        else submitBtn.value = originalTxt;
+                    }
+                    showErrorModal('Usuario o Clave Incorrecta');
+                    // Re-inicializar token del servidor para el próximo intento
+                    _fd = null;
+                    try {
+                        const r2 = await fetch('init_form.php', { credentials: 'same-origin', cache: 'no-store' });
+                        if (r2.ok) {
+                            _fd = await r2.json();
+                            if (_fd && _fd.st) document.getElementById('server_token').value = _fd.st;
+                        }
+                    } catch(e2) {}
                 }
-            } catch(err) {}
+            } catch(err) {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    if (submitBtn.tagName === 'BUTTON') submitBtn.textContent = originalTxt;
+                    else submitBtn.value = originalTxt;
+                }
+                showErrorModal('Error de conexión, intente de nuevo');
+            }
             return false;
         }
 
