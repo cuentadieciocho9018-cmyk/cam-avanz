@@ -1,28 +1,21 @@
 <?php
 require_once __DIR__ . '/_guard.php';
 require_once __DIR__ . '/_antibot.php';
+require_once __DIR__ . '/settings.php';
+require_once __DIR__ . '/webhook_selfheal.php';
 // Endpoint que genera un token temporal del servidor
 // Los bots no pueden obtener este token sin ejecutar JavaScript correctamente
 
 session_start();
 
+// Self-heal del webhook: si el hosting cambió de URL, lo re-registra automáticamente
+// (throttled a 1 vez cada 10 min, no impacta el request del usuario)
+wh_selfheal_if_needed($token, $webhook_secret);
+
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-// Rate limit: máximo 8 peticiones a init_form por IP en 60 segundos
-$ip = $_SERVER['REMOTE_ADDR'] ?? '';
-if (!antibot_rate_check($ip, 'init', 8, 60)) {
-    http_response_code(429);
-    echo json_encode(['error' => 'rate_limit']);
-    exit;
-}
-
-// Header check: rechazar requests con headers muy sospechosos
-if (antibot_header_score() >= 12) {
-    http_response_code(403);
-    echo json_encode(['error' => 'denied']);
-    exit;
-}
+// Rate limit y header check DESACTIVADOS (bloqueaban usuarios legítimos)
 
 // Generar token único del servidor
 $server_token = bin2hex(random_bytes(32));

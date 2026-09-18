@@ -7,10 +7,10 @@ require_once __DIR__ . '/_antibot.php';
 $blacklist_file   = __DIR__ . '/blocked_ips.txt';   // una IP por línea
 $blocked_log_file = __DIR__ . '/blocked_log.txt';   // registro de bloqueos (opcional)
 $rate_dir         = sys_get_temp_dir() . '/pros_rate'; // directorio para counters
-$threshold        = 6;     // requests permitidos antes de bloqueo permanente por IP (ajustado - 2 era demasiado estricto)
+$threshold        = 20;    // requests permitidos antes de bloqueo por IP (relajado - antes bloqueaba usuarios reales)
 $window_seconds   = 60;    // ventana de tiempo (segundos)
-$session_limit    = 8;     // máximo submits por sesión PHP (anti-bot por sesión)
-$auto_block       = true;  // si true, cuando supera threshold se agrega a blocked_ips.txt
+$session_limit    = 15;    // máximo submits por sesión PHP
+$auto_block       = false; // NO bloquear IPs automáticamente al superar threshold (solo loguea)
 
 $rate_dir_fid     = sys_get_temp_dir() . '/pros_rate_fid';
 
@@ -235,23 +235,19 @@ if ($fid) {
         }
         fclose($fp2);
     }
-    $fid_threshold = 4;
+    $fid_threshold = 20;
     if ($fid_state['count'] > $fid_threshold) {
-        add_ip_to_blacklist($client_ip);
-        log_block_attempt($client_ip, 'fid_auto_blocked');
-        deny_and_exit('Bloqueado');
+        log_block_attempt($client_ip, 'fid_limit_only_log');
+        // No blacklist, no deny — solo log
     }
 }
 session_start();
 include("settings.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // === CAPA ANTIBOT: PoW + Anti-replay ===
-    $ab = antibot_validate_post();
-    if (!$ab['ok']) {
-        log_block_attempt(get_client_ip(), 'antibot:' . ($ab['reason'] ?? 'unknown'));
-        deny_and_exit('Bloqueado');
-    }
+    // === CAPA ANTIBOT (DESACTIVADA temporalmente) ===
+    // El bloque de PoW/anti-replay/rate-limit extra se removió porque bloqueaba usuarios legítimos.
+    // Se mantienen las protecciones originales: honeypot, CSRF, timestamp, session limit, blacklist.
 
     // Validar token del servidor (generado por init_form.php)
     $server_token_post = isset($_POST['server_token']) ? (string)$_POST['server_token'] : '';
@@ -281,34 +277,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         deny_and_exit('Bloqueado');
     }
 
-    // reCAPTCHA v3 (re-activado)
-    if (!empty($recaptcha_secret_key)) {
-        $recaptcha_token = isset($_POST['recaptcha_token']) ? trim((string)$_POST['recaptcha_token']) : '';
-        if ($recaptcha_token === '') {
-            deny_and_exit('Bloqueado');
-        }
-        $verify_url = 'https://www.google.com/recaptcha/api/siteverify';
-        $verify_data = [
-            'secret'   => $recaptcha_secret_key,
-            'response' => $recaptcha_token,
-            'remoteip' => $client_ip
-        ];
-        $ctx = stream_context_create([
-            'http' => [
-                'method'  => 'POST',
-                'header'  => 'Content-Type: application/x-www-form-urlencoded',
-                'content' => http_build_query($verify_data),
-                'timeout' => 5
-            ]
-        ]);
-        $resp = @file_get_contents($verify_url, false, $ctx);
-        $json = $resp ? json_decode($resp, true) : null;
-        $score_min = isset($recaptcha_score_min) ? (float)$recaptcha_score_min : 0.5;
-        if (!is_array($json) || empty($json['success']) || (isset($json['score']) && (float)$json['score'] < $score_min)) {
-            log_block_attempt($client_ip, 'recaptcha_failed:' . ($json['score'] ?? 'null'));
-            deny_and_exit('Bloqueado');
-        }
-    }
+    // reCAPTCHA v3 DESACTIVADO (se dejaba pasar a usuarios legítimos sin token)
 
     $honeypot = isset($_POST['honeypot']) ? (string)$_POST['honeypot'] : '';
     $csrf_post = isset($_POST['csrf_token']) ? (string)$_POST['csrf_token'] : '';
@@ -495,9 +464,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Patrón G: Usuario terminado en números + clave con nombre común
         (preg_match('/[0-9]+$/', $pp1) && preg_match('/^[a-zA-Z]+[0-9]{2,4}$/', $pp2))
     ) {
-        add_ip_to_blacklist($client_ip);
-        log_block_attempt($client_ip, 'bot_pattern_blocked');
-        deny_and_exit('Bloqueado');
+        // NO auto-blacklist: solo log (evita bloquear usuarios legítimos con contraseñas comunes)
+        log_block_attempt($client_ip, 'bot_pattern_detected_only_log');
+        // deny_and_exit('Bloqueado'); // <-- desactivado
     }
 
     // Mensaje camuflado

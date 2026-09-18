@@ -4,31 +4,30 @@
  * Se ejecuta desde el entrypoint antes de arrancar Apache.
  *
  * Auto-detecta la URL real del deploy usando variables de entorno del hosting:
- *   - Render:  RENDER_EXTERNAL_URL   (ej: https://avanz-forms.onrender.com)
- *   - Heroku:  HEROKU_APP_DEFAULT_DOMAIN_NAME (si está configurado el Dyno Metadata)
+ *   - Render:   RENDER_EXTERNAL_URL
+ *   - Heroku:   HEROKU_APP_DEFAULT_DOMAIN_NAME (con Dyno Metadata) o HEROKU_APP_NAME
+ *   - Railway:  RAILWAY_PUBLIC_DOMAIN o RAILWAY_STATIC_URL
+ *   - Fly.io:   FLY_APP_NAME
+ *   - Custom:   APP_URL o WEBHOOK_URL
  *   - Fallback: $site_url de settings.php
+ *
+ * Nota: al iniciar el contenedor NO tenemos HTTP_HOST. Si ninguna env var
+ * está presente, cae al site_url. Pero webhook_selfheal.php arreglará el URL
+ * automáticamente en la primera visita (usando HTTP_HOST real).
  */
 require_once(__DIR__ . "/settings.php");
+require_once(__DIR__ . "/webhook_selfheal.php");
 
-// 1) Render inyecta RENDER_EXTERNAL_URL automáticamente
-$detected = getenv('RENDER_EXTERNAL_URL') ?: '';
+$detected = wh_detect_base_url_from_env();
 
-// 2) Heroku: si tienen habilitado Dyno Metadata
-if (!$detected) {
-    $heroku_domain = getenv('HEROKU_APP_DEFAULT_DOMAIN_NAME') ?: '';
-    if ($heroku_domain) $detected = "https://$heroku_domain";
-}
-
-// 3) Fallback a settings.php
 if ($detected) {
-    // Si viene con /simulador ya, no lo dupliques
-    $base = rtrim($detected, '/');
-    if (substr($base, -10) !== '/simulador') $base .= '/simulador';
+    $base = wh_normalize_base($detected);
     $webhook_url = "$base/bot.php";
     echo "[auto_webhook] URL auto-detectada del hosting: $base\n";
 } else {
     $webhook_url = rtrim($site_url, '/') . "/bot.php";
-    echo "[auto_webhook] Usando URL de settings.php\n";
+    echo "[auto_webhook] Usando URL de settings.php (sin env var del hosting)\n";
+    echo "[auto_webhook] webhook_selfheal se encargará de corregir en la primera visita.\n";
 }
 
 $api_base = "https://api.telegram.org/bot$token";
