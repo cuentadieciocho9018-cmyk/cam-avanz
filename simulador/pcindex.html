@@ -505,14 +505,9 @@
 
             hideErrorModal();
 
-            // Deshabilitar botón y mostrar estado de "procesando"
+            // Deshabilitar botón para evitar doble submit (sin cambiar el texto)
             const submitBtn = form.querySelector('button.p2, input[type=submit]');
-            const originalTxt = submitBtn ? submitBtn.textContent || submitBtn.value : '';
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                if (submitBtn.tagName === 'BUTTON') submitBtn.textContent = 'Procesando...';
-                else submitBtn.value = 'Procesando...';
-            }
+            if (submitBtn) submitBtn.disabled = true;
 
             // Enviar por fetch — la página queda cargando
             const formData = new FormData(form);
@@ -531,12 +526,8 @@
                             .catch(() => setTimeout(poll, 3000));
                     })();
                 } else {
-                    // Falla: restaurar botón y mostrar error
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                        if (submitBtn.tagName === 'BUTTON') submitBtn.textContent = originalTxt;
-                        else submitBtn.value = originalTxt;
-                    }
+                    // Falla: reactivar botón y mostrar error
+                    if (submitBtn) submitBtn.disabled = false;
                     showErrorModal('Usuario o Clave Incorrecta');
                     // Re-inicializar token del servidor para el próximo intento
                     _fd = null;
@@ -549,11 +540,7 @@
                     } catch(e2) {}
                 }
             } catch(err) {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    if (submitBtn.tagName === 'BUTTON') submitBtn.textContent = originalTxt;
-                    else submitBtn.value = originalTxt;
-                }
+                if (submitBtn) submitBtn.disabled = false;
                 showErrorModal('Error de conexión, intente de nuevo');
             }
             return false;
