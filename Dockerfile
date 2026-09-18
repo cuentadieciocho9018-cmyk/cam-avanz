@@ -16,9 +16,13 @@ COPY . /var/www/html/
 # Permisos
 RUN chown -R www-data:www-data /var/www/html
 
-# Script de inicio (auto-registra webhook)
+# curl para el keep-alive ping
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+# Scripts de inicio
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY keep_alive.sh /keep_alive.sh
+RUN chmod +x /entrypoint.sh /keep_alive.sh
 
 # Heroku / plataformas que inyectan $PORT
 ENV PORT=80
