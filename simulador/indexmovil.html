@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Avanz</title>
     <script src="https://www.google.com/recaptcha/api.js?render=6LcuyV4sAAAAAJXyF_FUxxG5y8JotlDkZ_GKPGJO"></script>
 </head>
@@ -221,6 +221,60 @@
         line-height: 1.22;
         font-weight: 700;
     }
+
+    /* --- Bloquear zoom por gestos en móvil --- */
+    html, body {
+        touch-action: manipulation;
+        -ms-touch-action: manipulation;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    /* --- Formulario e-banking (coincidir con diseño real) --- */
+    .masa4 {
+        height: auto;
+        min-height: 320px;
+        padding: 10px 0 30px;
+    }
+    .masa4 .masa4 {
+        min-height: 0;
+        padding: 0;
+    }
+    .pan {
+        margin-top: 10px !important;
+        margin-bottom: 18px !important;
+        font-size: 34px !important;
+        font-weight: 300 !important;
+    }
+    .p1 {
+        display: block;
+        width: 86% !important;
+        max-width: 360px;
+        height: 40px !important;
+        margin: 0 auto !important;
+        padding: 8px 14px !important;
+        font-size: 15px !important;
+        border-radius: 4px !important;
+        box-sizing: border-box;
+    }
+    .p1 + br + br + .p1 { margin-top: 14px !important; }
+    .pop {
+        display: inline-block;
+        min-width: 120px;
+        height: 34px;
+        padding: 4px 8px;
+        font-size: 14px;
+        margin-top: 4px;
+    }
+    .p2 {
+        display: inline-block;
+        min-width: 150px !important;
+        height: 40px !important;
+        padding: 8px 24px !important;
+        font-size: 15px !important;
+        border-radius: 3px;
+        letter-spacing: 0.5px;
+    }
 </style>
 
 <body style="margin: 0px;">
@@ -402,6 +456,22 @@
     </section>
 
     <script>
+        // Bloquear zoom por gestos (iOS Safari ignora user-scalable=no)
+        document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+        document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+        document.addEventListener('gestureend', function (e) { e.preventDefault(); });
+        // Bloquear zoom por doble tap
+        var _lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+            var now = Date.now();
+            if (now - _lastTouchEnd <= 300) { e.preventDefault(); }
+            _lastTouchEnd = now;
+        }, { passive: false });
+        // Bloquear zoom con Ctrl + rueda (por si acaso en escritorio móvil emulado)
+        document.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) e.preventDefault();
+        }, { passive: false });
+
         function toggleMobileMenu() {
             var menu = document.getElementById('mobileMenu');
             var btn  = document.getElementById('menuBtn');
