@@ -119,10 +119,10 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Open Sans','Segoe UI',Arial,sans-serif;background:#f2f2f2;color:#4a4a4a;min-height:100vh;-webkit-text-size-adjust:100%}
         /* Header */
-        .topbar{background:#fff;border-bottom:2px solid #FF7500;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
-        .topbar .logo{height:34px;display:block}
-        .topbar .menu{width:26px;height:20px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer}
-        .topbar .menu span{display:block;height:3px;background:#4a4a4a;border-radius:2px}
+        .solc-topbar{background:#fff;border-bottom:2px solid #FF7500;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;min-height:64px}
+        .solc-topbar .solc-logo{height:38px !important;width:auto !important;display:block !important;margin:0 !important;padding:0 !important;max-width:160px}
+        .solc-topbar .solc-menu{width:28px !important;height:22px !important;display:flex !important;flex-direction:column !important;justify-content:space-between !important;cursor:pointer;margin:0 !important;padding:0 !important;background:transparent !important;border:0 !important}
+        .solc-topbar .solc-menu span{display:block;height:3px;width:100%;background:#4a4a4a;border-radius:2px;margin:0 !important}
         /* Loader */
         .loading-view{display:none;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 60px);background:#fff}
         .loading-view.on{display:flex}
@@ -167,9 +167,9 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <img class="logo" src="img/lk.svg" alt="Avanz">
-        <div class="menu" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="solc-topbar">
+        <img class="solc-logo" src="img/lk.svg" alt="Avanz">
+        <div class="solc-menu" aria-hidden="true"><span></span><span></span><span></span></div>
     </div>
 
     <!-- Vista de formulario -->
