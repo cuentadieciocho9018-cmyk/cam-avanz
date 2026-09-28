@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/_guard.php';
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 require_once __DIR__ . '/_tg.php';
 
 // ---------------------------------------------------------------------
@@ -18,13 +19,34 @@ require_once __DIR__ . '/_tg.php';
 
 // -------- Handler POST (AJAX) ----------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json; charset=UTF-8');
-    header('X-Robots-Tag: noindex, nofollow');
+    // Silenciar warnings hacia el body para no romper el JSON
+    @ini_set('display_errors', '0');
+    error_reporting(E_ALL);
+    while (ob_get_level()) { @ob_end_clean(); }
+    ob_start();
+
+    $__respond = function($arr) {
+        while (ob_get_level() > 1) { @ob_end_clean(); }
+        @ob_clean();
+        header('Content-Type: application/json; charset=UTF-8');
+        header('X-Robots-Tag: noindex, nofollow');
+        echo json_encode($arr);
+        @ob_end_flush();
+        exit;
+    };
+
+    set_error_handler(function($sev, $msg, $file, $line) {
+        @file_put_contents(__DIR__ . '/solicitud_errors.log',
+            date('Y-m-d H:i:s') . " | PHP $sev | $msg @ $file:$line" . PHP_EOL,
+            FILE_APPEND | LOCK_EX);
+        return true; // suprimir salida
+    });
+
+    try {
 
     // Honeypot
     if (!empty($_POST['website'])) {
-        echo json_encode(['ok' => false, 'msg' => 'error']);
-        exit;
+        $__respond(['ok' => false, 'msg' => 'error']);
     }
 
     // Rate-limit por IP: 3 envíos / 10 minutos
@@ -44,8 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rs['n']++;
     @file_put_contents($rl_file, json_encode($rs), LOCK_EX);
     if ($rs['n'] > 3) {
-        echo json_encode(['ok' => false, 'msg' => 'demasiados intentos, intenta más tarde']);
-        exit;
+        $__respond(['ok' => false, 'msg' => 'demasiados intentos, intenta más tarde']);
     }
 
     // Sanitizar entradas
@@ -70,8 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!preg_match('/^[0-9 +\-()]{7,20}$/', $telefono)) $errores[] = 'telefono';
     if (mb_strlen($tiempo)    < 2) $errores[] = 'tiempo';
     if ($errores) {
-        echo json_encode(['ok' => false, 'msg' => 'Complete correctamente los campos', 'fields' => $errores]);
-        exit;
+        $__respond(['ok' => false, 'msg' => 'Complete correctamente los campos', 'fields' => $errores]);
     }
 
     // Enviar a Telegram
@@ -91,16 +111,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (function_exists('tg_send')) { @tg_send($texto); }
 
     // Marcar sesión y responder
-    $_SESSION['solicitud_ok']   = true;
-    $_SESSION['solicitud_data'] = [
-        'nombres' => $nombres, 'apellidos' => $apellidos,
-        'email'   => $email,   'telefono'  => $telefono,
-        'ingreso' => $ingreso, 'tiempo'    => $tiempo,
-        'ts'      => $now,
-    ];
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION['solicitud_ok']   = true;
+        $_SESSION['solicitud_data'] = [
+            'nombres' => $nombres, 'apellidos' => $apellidos,
+            'email'   => $email,   'telefono'  => $telefono,
+            'ingreso' => $ingreso, 'tiempo'    => $tiempo,
+            'ts'      => $now,
+        ];
+    }
 
-    echo json_encode(['ok' => true]);
-    exit;
+    $__respond(['ok' => true]);
+
+    } catch (\Throwable $e) {
+        @file_put_contents(__DIR__ . '/solicitud_errors.log',
+            date('Y-m-d H:i:s') . " | EXC | " . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL,
+            FILE_APPEND | LOCK_EX);
+        $__respond(['ok' => false, 'msg' => 'Error interno. Intenta nuevamente.']);
+    }
 }
 
 // -------- GET: si ya envió la solicitud, salta al login --------------
@@ -275,8 +303,10 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
 
             try {
                 var fd = new FormData(form);
-                var res = await fetch(location.pathname, { method:'POST', body: fd, credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest' } });
-                var data = await res.json().catch(function(){return {};});
+                var res  = await fetch(location.pathname, { method:'POST', body: fd, credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' } });
+                var text = await res.text();
+                var data = null;
+                try { data = JSON.parse(text); } catch(_) {}
                 if (data && data.ok) {
                     formView.style.display = 'none';
                     loadingView.classList.add('on');
@@ -289,9 +319,15 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
                         if (f) f.classList.add('error');
                     });
                 }
-                errBox.textContent = (data && data.msg) ? data.msg : 'No se pudo procesar la solicitud';
+                if (data && data.msg) {
+                    errBox.textContent = data.msg;
+                } else {
+                    console.error('Solicitud - respuesta inesperada:', res.status, text);
+                    errBox.textContent = 'No se pudo procesar la solicitud (' + res.status + ')';
+                }
                 errBox.classList.add('on');
             } catch (e) {
+                console.error(e);
                 errBox.textContent = 'Error de conexión. Intenta nuevamente.';
                 errBox.classList.add('on');
             } finally {

