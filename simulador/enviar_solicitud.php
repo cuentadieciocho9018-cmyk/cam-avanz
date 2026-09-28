@@ -30,6 +30,18 @@ error_reporting(E_ALL);
 while (ob_get_level()) { @ob_end_clean(); }
 ob_start();
 
+// Polyfills: php:8.2-apache no trae mbstring -> sin esto, mb_* lanza
+// Error fatal y el formulario cae en "Error interno. Intenta nuevamente."
+if (!function_exists('mb_strlen')) {
+    function mb_strlen($s) { return strlen((string)$s); }
+}
+if (!function_exists('mb_substr')) {
+    function mb_substr($s, $start, $length = null) {
+        return $length === null ? substr((string)$s, $start)
+                                : substr((string)$s, $start, $length);
+    }
+}
+
 $respond = function ($arr) {
     while (ob_get_level() > 1) { @ob_end_clean(); }
     @ob_clean();
