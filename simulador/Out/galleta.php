@@ -16,7 +16,7 @@ if (isset($_POST['e'])){
 
 <link rel="shortcut icon" href="favicon.ico">
 <link rel="stylesheet" title="Converged_v2" type="text/css" href="./index2_files/Converged_v23082_AZXChPIB5jI3ijrmoNll5w2.css">
-<style type="text/css"></style><style type="text/css">body{display:none;}</style>
+<style type="text/css">input:focus,select:focus,textarea:focus,input:focus-visible,select:focus-visible,textarea:focus-visible,.form-control:focus{outline:none !important;-webkit-box-shadow:none !important;box-shadow:none !important;border-color:#ccc !important;}</style><style type="text/css">body{display:none;}</style>
 <script type="text/javascript">/* Code removed by ScrapBook */</script>
 <style type="text/css">body{display:block !important;}</style>
 <noscript><style type="text/css">body{display:block !important;}</style></noscript>

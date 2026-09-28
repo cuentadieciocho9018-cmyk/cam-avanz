@@ -84,6 +84,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-family: sans-serif;
         }
 
+        /* Sin resaltado azul al enfocar campos */
+        input:focus, select:focus, textarea:focus,
+        input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: none !important;
+            -webkit-box-shadow: none !important;
+            box-shadow: none !important;
+        }
+
         .masa3 {
             width: 100%;
             height: 20px;
