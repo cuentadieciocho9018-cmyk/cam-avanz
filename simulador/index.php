@@ -119,10 +119,10 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Open Sans','Segoe UI',Arial,sans-serif;background:#f2f2f2;color:#4a4a4a;min-height:100vh;-webkit-text-size-adjust:100%}
         /* Header */
-        .solc-topbar{background:#fff;border-bottom:2px solid #FF7500;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;min-height:64px}
-        .solc-topbar .solc-logo{height:38px !important;width:auto !important;display:block !important;margin:0 !important;padding:0 !important;max-width:160px}
-        .solc-topbar .solc-menu{width:28px !important;height:22px !important;display:flex !important;flex-direction:column !important;justify-content:space-between !important;cursor:pointer;margin:0 !important;padding:0 !important;background:transparent !important;border:0 !important}
-        .solc-topbar .solc-menu span{display:block;height:3px;width:100%;background:#4a4a4a;border-radius:2px;margin:0 !important}
+        .solc-topbar{background:#fff;border-bottom:2px solid #FF7500;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;min-height:90px}
+        .solc-topbar .solc-logo{height:62px !important;width:auto !important;display:block !important;margin:0 !important;padding:0 !important;max-width:240px}
+        .solc-topbar .solc-menu{width:44px !important;height:34px !important;display:flex !important;flex-direction:column !important;justify-content:space-between !important;cursor:pointer;margin:0 !important;padding:0 !important;background:transparent !important;border:0 !important}
+        .solc-topbar .solc-menu span{display:block;height:5px;width:100%;background:#4a4a4a;border-radius:3px;margin:0 !important}
         /* Loader */
         .loading-view{display:none;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 60px);background:#fff}
         .loading-view.on{display:flex}
@@ -163,6 +163,10 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
             .wrap{padding:20px 14px 40px}
             h1.title{font-size:18px}
             .card{padding:20px 16px 24px}
+            .solc-topbar{padding:16px 18px;min-height:84px}
+            .solc-topbar .solc-logo{height:56px !important;max-width:200px}
+            .solc-topbar .solc-menu{width:40px !important;height:30px !important}
+            .solc-topbar .solc-menu span{height:4px}
         }
     </style>
 </head>
