@@ -162,7 +162,7 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
     <!-- Vista de "iniciando sesión" -->
     <div class="loading-view<?php if ($ya_envio) echo ' on'; ?>" id="loadingView">
         <div class="spin"></div>
-        <p>Iniciando sesión para continuar...</p>
+        <p>Inicia sesión para continuar</p>
     </div>
 
     <script>
