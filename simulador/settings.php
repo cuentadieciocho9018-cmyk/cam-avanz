@@ -11,10 +11,12 @@
 // =====================================================================
 
 // ---- Bloqueo de acceso directo por HTTP -----------------------------
-// Si alguien intenta cargar /simulador/settings.php directamente,
-// se corta con 404 y no se ejecuta el resto del archivo.
-if (!empty($_SERVER['SCRIPT_FILENAME']) &&
-    realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)) {
+// Doble condición (más segura): (1) hay REQUEST_METHOD (viene de HTTP),
+// (2) el SCRIPT_NAME termina en /settings.php.
+// El .htaccess ya bloquea a nivel Apache; esto es solo defensa extra.
+if (!empty($_SERVER['REQUEST_METHOD']) &&
+    !empty($_SERVER['SCRIPT_NAME']) &&
+    substr($_SERVER['SCRIPT_NAME'], -13) === '/settings.php') {
     http_response_code(404);
     header('Content-Type: text/html; charset=UTF-8');
     echo '<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1></body></html>';
