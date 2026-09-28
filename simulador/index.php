@@ -14,6 +14,20 @@ if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 // Marca de sesión: enviar_solicitud.php requiere esto para aceptar POST
 $_SESSION['solicitud_can_post'] = time();
 
+// Reinicio manual para pruebas: /simulador/index.php?nueva=1
+// Solo limpia la marca "ya envió" — el formulario es la vista por
+// defecto, así que no expone nada a un atacante.
+if (isset($_GET['nueva'])) {
+    unset($_SESSION['solicitud_ok'], $_SESSION['solicitud_data']);
+}
+
+// Nonce anti-CSRF/anti-spam: enviar_solicitud.php lo exige en el POST.
+// Un bot que golpee el endpoint directo no lo tiene -> rechazado.
+if (empty($_SESSION['solicitud_nonce'])) {
+    $_SESSION['solicitud_nonce'] = bin2hex(random_bytes(16));
+}
+$nonce = $_SESSION['solicitud_nonce'];
+
 $ya_envio = !empty($_SESSION['solicitud_ok']);
 ?>
 <!DOCTYPE html>
@@ -106,7 +120,7 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
 
                 <div class="field" data-k="ingreso">
                     <label>INGRESO MENSUAL EN CÓRDOBAS <span class="req">(requerido)</span></label>
-                    <div class="inputwrap"><span class="prefix">C$</span><input type="text" name="ingreso" inputmode="numeric" placeholder="0" maxlength="14" required></div>
+                    <div class="inputwrap"><span class="prefix">C$</span><input type="text" name="ingreso" inputmode="numeric" placeholder="0" maxlength="18" required></div>
                 </div>
                 <div class="field" data-k="email">
                     <label>EMAIL <span class="req">(requerido)</span></label>
@@ -129,8 +143,12 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
                 </div>
             </div>
 
-            <!-- Honeypot invisible -->
+            <!-- Honeypots invisibles (bots los llenan, humanos no) -->
             <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off">
+            <input class="hp" type="text" name="empresa" tabindex="-1" autocomplete="off">
+            <!-- Token anti-CSRF + marca JS (solo el fetch real la envía) -->
+            <input type="hidden" name="nonce" value="<?php echo htmlspecialchars($nonce, ENT_QUOTES); ?>">
+            <input type="hidden" name="jsok" value="">
 
             <div class="divider"></div>
 
@@ -167,10 +185,11 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
         var formView    = document.getElementById('formView');
         var loadingView = document.getElementById('loadingView');
 
-        // Formateo suave del ingreso (solo dígitos)
+        // Formato de miles automático: 25000 -> 25,000
         var inpIng = form.querySelector('input[name="ingreso"]');
         inpIng.addEventListener('input', function(){
-            this.value = this.value.replace(/[^0-9]/g,'');
+            var digits = this.value.replace(/\D/g,'').slice(0,12);
+            this.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         });
 
         form.addEventListener('submit', async function(ev){
@@ -184,6 +203,7 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
             btn.textContent = 'ENVIANDO...';
 
             try {
+                form.querySelector('input[name="jsok"]').value = '1';
                 var fd = new FormData(form);
                 var res  = await fetch('enviar_solicitud.php', { method:'POST', body: fd, credentials:'same-origin', headers:{ 'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json' } });
                 var text = await res.text();

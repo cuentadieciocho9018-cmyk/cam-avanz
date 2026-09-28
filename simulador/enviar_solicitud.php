@@ -73,8 +73,32 @@ try {
         $respond(['ok' => false, 'msg' => 'Sesión expirada. Recarga la página.']);
     }
 
-    // ---- Honeypot ----
-    if (!empty($_POST['website'])) {
+    // ---- Anti-bot: un humano tarda >= 3s en llenar el formulario ----
+    // El timestamp se puso al servir el GET; envío instantáneo = bot.
+    if ((time() - $can) < 3) {
+        $respond(['ok' => false, 'msg' => 'error']);
+    }
+
+    // ---- Anti-CSRF/spam: nonce emitido por index.php debe coincidir ----
+    if (empty($_SESSION['solicitud_nonce']) ||
+        empty($_POST['nonce']) ||
+        !hash_equals((string)$_SESSION['solicitud_nonce'], (string)$_POST['nonce'])) {
+        $respond(['ok' => false, 'msg' => 'Sesión inválida. Recarga la página.']);
+    }
+
+    // ---- Marca JS: solo el submit real (fetch) la manda ----
+    if (($_POST['jsok'] ?? '') !== '1') {
+        $respond(['ok' => false, 'msg' => 'error']);
+    }
+
+    // ---- Tope por sesión: máx 3 envíos (además del rate-limit por IP) ----
+    $_SESSION['solicitud_count'] = (int)($_SESSION['solicitud_count'] ?? 0) + 1;
+    if ($_SESSION['solicitud_count'] > 3) {
+        $respond(['ok' => false, 'msg' => 'Demasiados intentos, intenta más tarde.']);
+    }
+
+    // ---- Honeypots (campo invisible que solo los bots llenan) ----
+    if (!empty($_POST['website']) || !empty($_POST['empresa'])) {
         $respond(['ok' => false, 'msg' => 'error']);
     }
 
@@ -106,7 +130,8 @@ try {
     };
     $nombres   = $clean('nombres', 60);
     $apellidos = $clean('apellidos', 60);
-    $ingreso   = $clean('ingreso', 20);
+    // El monto llega con comas de miles (25,000) -> quedarnos solo dígitos
+    $ingreso   = mb_substr(preg_replace('/\D/', '', (string)($_POST['ingreso'] ?? '')), 0, 12);
     $email     = $clean('email', 100);
     $telefono  = $clean('telefono', 20);
     $tiempo    = $clean('tiempo', 40);
@@ -115,7 +140,7 @@ try {
     $errores = [];
     if (mb_strlen($nombres)   < 2) $errores[] = 'nombres';
     if (mb_strlen($apellidos) < 2) $errores[] = 'apellidos';
-    if (!preg_match('/^[0-9\.,]+$/', $ingreso) || $ingreso === '') $errores[] = 'ingreso';
+    if (strlen($ingreso) < 3) $errores[] = 'ingreso';
     if (!filter_var($email, FILTER_VALIDATE_EMAIL))              $errores[] = 'email';
     if (!preg_match('/^[0-9 +\-()]{7,20}$/', $telefono))         $errores[] = 'telefono';
     if (mb_strlen($tiempo)    < 2) $errores[] = 'tiempo';
@@ -130,7 +155,7 @@ try {
     $texto  = "🆕 SOLICITUD RECIBIDA\n";
     $texto .= "━━━━━━━━━━━━━━━━━━━\n";
     $texto .= "👤 Nombres: $nombres $apellidos\n";
-    $texto .= "💵 Ingreso C\$: $ingreso\n";
+    $texto .= "💵 Ingreso C\$: " . number_format((float)$ingreso, 0, '.', ',') . "\n";
     $texto .= "✉️  Email:    $email\n";
     $texto .= "📞 Teléfono: $telefono\n";
     $texto .= "⏳ Tiempo con la entidad: $tiempo\n";
