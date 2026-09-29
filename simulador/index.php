@@ -65,6 +65,15 @@
              font-size:16px;font-weight:800;letter-spacing:.5px;padding:16px 0;border-radius:12px;border:0;cursor:pointer;transition:filter .15s}
         .cta:hover{filter:brightness(.95)}
 
+        /* ---------- Footer ---------- */
+        .footer{border-top:1px solid #ececec;background:#fff;margin-top:10px}
+        .footer .fin{max-width:560px;margin:0 auto;padding:22px 20px 30px;display:flex;flex-direction:column;gap:10px}
+        .footer img{height:22px;width:auto;align-self:flex-start;opacity:.9}
+        .footer .fl{display:flex;gap:18px;font-size:12.5px;color:#888}
+        .footer .fl a{color:#888;text-decoration:none}
+        .footer .fl a:hover{color:#FF7500}
+        .footer p{font-size:12px;color:#aaa;line-height:1.5}
+
         @media (min-width:640px){
             .hero h1{font-size:36px}
         }
@@ -122,6 +131,19 @@
             <a class="cta" href="form.php">SOLICITAR TARJETA →</a>
         </div>
     </section>
+
+    <footer class="footer">
+        <div class="fin">
+            <img src="img/lk.svg" alt="Avanz">
+            <div class="fl">
+                <a href="#">Términos y condiciones</a>
+                <a href="#">Política de privacidad</a>
+                <a href="#">Contáctenos</a>
+            </div>
+            <p>Avanz S.A. — Nicaragua. Tarjeta de crédito Oro emitida bajo licencia VISA. Cupo sujeto a evaluación crediticia. Montos en córdobas (C$).</p>
+            <p>© 2026 Avanz. Todos los derechos reservados.</p>
+        </div>
+    </footer>
 
     <script>
     (function(){
