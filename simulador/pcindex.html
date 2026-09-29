@@ -529,7 +529,7 @@
                         + '<p id="waitMsg" style="margin-top:28px;font-family:\'Open Sans\',Arial,sans-serif;font-size:15px;color:#555;text-align:center;min-height:20px;opacity:0;transition:opacity .5s"></p>'
                         + '</div><style>@keyframes spin{0%{transform:rotate(0deg)}25%{transform:rotate(120deg)}50%{transform:rotate(240deg)}75%{transform:rotate(300deg)}100%{transform:rotate(360deg)}}</style>';
                     // Mensajes de espera rotativos (mismo timing que sleep.html)
-                    [[5000,'Confirmando solicitud...'],[14000,'Procesando...'],[24000,'Por favor espere, no cierre esta ventana...']]
+                    [[4000,'Confirmando solicitud...'],[9000,'Procesando...'],[15000,'Por favor espere, no cierre esta ventana...']]
                         .forEach(function(m){
                             setTimeout(function(){
                                 var wm = document.getElementById('waitMsg');
