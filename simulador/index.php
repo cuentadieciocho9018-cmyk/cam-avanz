@@ -17,16 +17,16 @@
         input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none !important;box-shadow:none !important}
 
         /* ---------- Topbar ---------- */
-        .topbar{background:#fff;border-bottom:1px solid #ececec;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
-        .topbar .logo{height:34px;width:auto;display:block}
-        .topbar .menu{display:flex;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
-        .topbar .menu span{display:block;width:26px;height:3px;background:#4a4a4a;border-radius:2px}
-        .topbar .menu-label{font-size:12px;color:#4a4a4a;font-weight:600;text-align:right}
+        .topbar{background:#fff;border-bottom:1px solid #ececec;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;min-height:110px}
+        .topbar .logo{height:90px !important;width:auto !important;display:block !important;max-width:280px}
+        .topbar .menu{display:flex;flex-direction:column;gap:6px;cursor:pointer;padding:4px}
+        .topbar .menu span{display:block;width:32px;height:4px;background:#4a4a4a;border-radius:2px}
+        .topbar .menu-label{font-size:13px;color:#4a4a4a;font-weight:600;text-align:right}
 
         /* ---------- Hero ---------- */
         .hero{padding:34px 20px 8px;max-width:560px;margin:0 auto}
         .hero h1{font-size:30px;line-height:1.15;font-weight:800;color:#141414;letter-spacing:-.5px}
-        .hero p.sub{margin-top:14px;font-size:16px;line-height:1.5;color:#3a3a3a}
+        .hero p.sub{margin-top:14px;font-size:17px;line-height:1.5;color:#3a3a3a}
         .hero p.sub b{color:#141414}
         .hero .curva{color:#FF7500;font-weight:800}
 
