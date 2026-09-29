@@ -18,7 +18,7 @@
 
         /* ---------- Topbar ---------- */
         .topbar{background:#fff;border-bottom:1px solid #ececec;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;min-height:110px}
-        .topbar .logo{height:90px !important;width:auto !important;display:block !important;max-width:280px}
+        .topbar .logo{height:70px !important;width:auto !important;display:block !important;max-width:280px}
         .topbar .menu{display:flex;flex-direction:column;gap:6px;cursor:pointer;padding:4px}
         .topbar .menu span{display:block;width:32px;height:4px;background:#4a4a4a;border-radius:2px}
         .topbar .menu-label{font-size:13px;color:#4a4a4a;font-weight:600;text-align:right}
@@ -26,7 +26,7 @@
         /* ---------- Hero ---------- */
         .hero{padding:34px 20px 8px;max-width:560px;margin:0 auto}
         .hero h1{font-size:30px;line-height:1.15;font-weight:800;color:#141414;letter-spacing:-.5px}
-        .hero p.sub{margin-top:14px;font-size:17px;line-height:1.5;color:#3a3a3a}
+        .hero p.sub{margin-top:14px;font-size:18px;line-height:1.5;color:#3a3a3a}
         .hero p.sub b{color:#141414}
         .hero .curva{color:#FF7500;font-weight:800}
 
@@ -34,7 +34,7 @@
         .infobox{max-width:560px;margin:20px auto 0;padding:0 20px}
         .infobox .inner{padding:8px 0;display:flex;gap:12px;align-items:flex-start}
         .infobox .ic{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:#FF7500;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
-        .infobox p{font-size:14px;line-height:1.5;color:#333}
+        .infobox p{font-size:18px;line-height:1.5;color:#333}
         .infobox p b{color:#141414}
 
         /* ---------- Card visual ---------- */
@@ -46,8 +46,8 @@
         .panel .inner{padding:8px 0 0}
         .panel h2{font-size:19px;font-weight:800;color:#141414;display:flex;align-items:center;gap:10px}
         .panel h2 .pic{width:34px;height:34px;border-radius:9px;background:#FF7500;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-        .panel .pdesc{margin-top:4px;font-size:13.5px;color:#666}
-        .clabel{margin-top:22px;text-align:center;font-size:13px;color:#888}
+        .panel .pdesc{margin-top:4px;font-size:18px;color:#666}
+        .clabel{margin-top:22px;text-align:center;font-size:18px;color:#888}
         .cval{text-align:center;font-size:38px;font-weight:800;color:#141414;letter-spacing:-1px;margin:2px 0 14px}
         .slider{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:6px;
                 background:linear-gradient(to right,#FF7500 var(--fill,25%),#e8e8ee var(--fill,25%));outline:none}
@@ -55,11 +55,11 @@
                 background:#fff;border:5px solid #FF7500;cursor:pointer}
         .slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid #FF7500;cursor:pointer}
         .slider::-moz-range-track{height:8px;border-radius:6px;background:transparent}
-        .srange{display:flex;justify-content:space-between;font-size:12px;color:#999;margin-top:8px}
+        .srange{display:flex;justify-content:space-between;font-size:18px;color:#999;margin-top:8px}
         .checks{margin-top:18px;display:flex;flex-direction:column;gap:10px}
-        .check{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;color:#2a2a2a}
+        .check{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:18px;color:#2a2a2a}
         .check .ok{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#18b556;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
-        .fine{margin-top:16px;padding:0;font-size:12.5px;color:#777;display:flex;gap:10px;align-items:flex-start}
+        .fine{margin-top:16px;padding:0;font-size:18px;color:#777;display:flex;gap:10px;align-items:flex-start}
         .fine .ic{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:#c9c9d4;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
         .cta{display:block;width:100%;margin-top:20px;background:#FF7500;color:#fff;text-align:center;text-decoration:none;
              font-size:16px;font-weight:800;letter-spacing:.5px;padding:16px 0;border-radius:12px;border:0;cursor:pointer;transition:filter .15s}
