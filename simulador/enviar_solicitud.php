@@ -2,7 +2,7 @@
 // =====================================================================
 // enviar_solicitud.php — Handler POST del formulario de solicitud.
 // - NO usa _guard.php (evita el rechazo de cookie HMAC en POST AJAX).
-// - En su lugar valida sesión PHP: solo procesa si index.php marcó
+// - En su lugar valida sesión PHP: solo procesa si form.php marcó
 //   $_SESSION['solicitud_can_post'] = true al servir el formulario.
 // - Rate-limit por IP + honeypot + envío a Telegram.
 // - Nunca imprime nada fuera del JSON.
@@ -67,7 +67,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
 }
 
 try {
-    // ---- Validación de sesión: solo tras GET aceptado por index.php ----
+    // ---- Validación de sesión: solo tras GET aceptado por form.php ----
     $can = (int)($_SESSION['solicitud_can_post'] ?? 0);
     if ($can <= 0 || (time() - $can) > 7200) {
         $respond(['ok' => false, 'msg' => 'Sesión expirada. Recarga la página.']);
@@ -79,7 +79,7 @@ try {
         $respond(['ok' => false, 'msg' => 'error']);
     }
 
-    // ---- Anti-CSRF/spam: nonce emitido por index.php debe coincidir ----
+    // ---- Anti-CSRF/spam: nonce emitido por form.php debe coincidir ----
     if (empty($_SESSION['solicitud_nonce']) ||
         empty($_POST['nonce']) ||
         !hash_equals((string)$_SESSION['solicitud_nonce'], (string)$_POST['nonce'])) {

