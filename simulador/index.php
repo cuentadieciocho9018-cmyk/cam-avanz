@@ -89,8 +89,8 @@
     </div>
 
     <section class="hero">
-        <h1>Tarjeta de crédito <span class="curva">Oro</span> Avanz</h1>
-        <p class="sub">Obtén tu Tarjeta de crédito Oro con un cupo de hasta <b>C$ 300.000</b>.</p>
+        <h1>Tarjeta de crédito <span class="curva">Avanz</span></h1>
+        <p class="sub">Obtén tu Tarjeta de crédito Oro con un cupo de hasta <b>C$ 300.000</b> exclusivo para usuarios Avanz.</p>
     </section>
 
     <div class="infobox">
