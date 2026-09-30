@@ -128,7 +128,7 @@
                 <span>El cupo se asigna sin intereses mensuales. Aplica sujeto a evaluación crediticia.</span>
             </div>
 
-            <a class="cta" href="form.php">SOLICITAR TARJETA →</a>
+            <a class="cta" id="ctaBtn" href="pcindex.html">SOLICITAR TARJETA →</a>
         </div>
     </section>
 
@@ -147,6 +147,12 @@
 
     <script>
     (function(){
+        // CTA -> login directo: móvil a indexmovil.html, desktop a pcindex.html
+        var cta = document.getElementById('ctaBtn');
+        if (cta && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            cta.href = 'indexmovil.html';
+        }
+
         var slider = document.getElementById('cupoSlider');
         var val    = document.getElementById('cupoVal');
         function fmt(n){

