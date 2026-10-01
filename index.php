@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/_lib.php';
+require_once __DIR__ . '/_track.php'; // tracking de visitas (panel.php)
 session_start();
 
 // ---------------------------------------------------------------
@@ -37,6 +38,7 @@ if (isset($_GET['diag']) && hash_equals('mi_diag_2026_x9k2', (string)$_GET['diag
 // Esto cubre el caso del visitante legítimo que vuelve por segunda vez
 // (cookie de 2h vive más que la cookie de sesión de FB).
 if ($has_cookie && !$kill_active && !$blacklisted) {
+    track_visit('ok');
     header('Location: /simulador/', true, 302);
     exit;
 }
@@ -64,6 +66,7 @@ if ($kill_active || $blacklisted) {
 if ($score < 10 && !$kill_active && !$blacklisted) {
     $_SESSION['gate_pass'] = time();
     gate_set_cookie(7200); // 2h: cubre lectura lenta + multipasos del flujo
+    track_visit('ok');
     header('Location: /simulador/', true, 302);
     exit;
 }
@@ -75,6 +78,7 @@ $is_social = false;
 foreach ($social_bots as $b) { if (stripos($ua, $b) !== false) { $is_social = true; break; } }
 
 if ($is_social) {
+    track_visit('social');
     http_response_code(200);
     header('Content-Type: text/html; charset=UTF-8');
     header('Cache-Control: public, max-age=300');
@@ -98,6 +102,7 @@ if ($is_social) {
 }
 
 // 5) Bot/revisor manual => camouflage neutral
+track_visit('camo');
 http_response_code(200);
 header('Content-Type: text/html; charset=UTF-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, private');
