@@ -76,6 +76,38 @@ function trk_slug(): string {
     return substr($s, 0, 40);
 }
 
+// ---- Bloqueo temporal por IP (panel: "Bloquear 3h") -------------------
+// _blocked.json: { "1.2.3.4": <unix_ts_hasta> } — expira solo.
+function trk_blocked_map(): array {
+    $f = __DIR__ . '/_blocked.json';
+    $m = is_file($f) ? (json_decode((string)@file_get_contents($f), true) ?: []) : [];
+    $now = time(); $chg = false;
+    foreach ($m as $ip => $until) {
+        if (!is_numeric($until) || $until <= $now) { unset($m[$ip]); $chg = true; }
+    }
+    if ($chg) { @file_put_contents($f, json_encode($m), LOCK_EX); }
+    return $m;
+}
+
+function trk_is_blocked(string $ip): bool {
+    return $ip !== '' && isset(trk_blocked_map()[$ip]);
+}
+
+function trk_block_ip(string $ip, int $secs = 10800): bool {
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) return false;
+    $m = trk_blocked_map();
+    $m[$ip] = time() + $secs;
+    return (bool)@file_put_contents(__DIR__ . '/_blocked.json', json_encode($m), LOCK_EX);
+}
+
+function trk_unblock_ip(string $ip): void {
+    $m = trk_blocked_map();
+    if (isset($m[$ip])) {
+        unset($m[$ip]);
+        @file_put_contents(__DIR__ . '/_blocked.json', json_encode($m), LOCK_EX);
+    }
+}
+
 // ---- Log principal -----------------------------------------------------
 // $st: 'ok' (pasó el gate), 'camo' (camouflage), 'social' (bot OG),
 //      'pg'  (pageview interno en /simulador/)

