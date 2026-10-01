@@ -18,10 +18,8 @@ date_default_timezone_set('America/Managua');
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
       || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params([
-        'lifetime' => 0, 'path' => '/', 'secure' => $https,
-        'httponly' => true, 'samesite' => 'Strict',
-    ]);
+    @ini_set('session.cookie_samesite', 'Strict');
+    session_set_cookie_params(0, '/', '', $https, true); // posicional: funciona en cualquier PHP
     session_start();
 }
 header('X-Frame-Options: DENY');
