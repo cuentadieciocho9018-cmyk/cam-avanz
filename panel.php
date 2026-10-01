@@ -84,7 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = 'Clave incorrecta.';
     }
     elseif ($authed && csrf_ok()) {
-        $links = is_fiup_img') {
+        $links = is_file($LINKS_FILE) ? (json_decode(@file_get_contents($LINKS_FILE), true) ?: []) : [];
+        if ($act === 'up_img') {
             // Drag & drop: guarda la imagen y crea el slug automáticamente
             header('Content-Type: application/json');
             $resp = ['ok' => false];
@@ -110,7 +111,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             echo json_encode($resp); exit;
         }
-        if ($act === 'le($LINKS_FILE) ? (json_decode(@file_get_contents($LINKS_FILE), true) ?: []) : [];
         if ($act === 'add_slug') {
             $slug  = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($_POST['slug'] ?? ''));
             $label = trim(substr((string)($_POST['label'] ?? ''), 0, 80));
