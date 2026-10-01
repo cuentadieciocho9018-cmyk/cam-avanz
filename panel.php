@@ -166,7 +166,7 @@ $links = is_file($LINKS_FILE) ? (json_decode(@file_get_contents($LINKS_FILE), tr
 
 $today = date('Y-m-d');
 $totOk=0;$totCamo=0;$totSocial=0;$totPg=0;$todayOk=0;
-$ipsAll=[];$ipsToday=[];$newestOk='';$ipOkCnt=[];
+$ipsAll=[];$ipsToday=[];$newestOk='';$ipOkCnt=[];$stSet=[];
 $slugHit=[];$slugIps=[];$slugToday=[];$slugLast=[];
 $cityIps=[];$cityToday=[];
 $ccIps=[];
@@ -177,7 +177,7 @@ foreach ($rows as $r) {
     elseif ($st==='camo') $totCamo++;
     elseif ($st==='social') $totSocial++;
     elseif ($st==='pg') $totPg++;
-    if ($ip!==''){ $ipsAll[$ip]=1; if($isT)$ipsToday[$ip]=1; }
+    if ($ip!==''){ $ipsAll[$ip]=1; if($isT)$ipsToday[$ip]=1; if($st!=='')$stSet[$ip][$st]=1; }
     $s=(string)($r['e']??'');
     if ($s!==''){
         $slugHit[$s]=($slugHit[$s]??0)+1;
@@ -190,7 +190,22 @@ foreach ($rows as $r) {
 uasort($slugIps, function($a,$b){return count($b)<=>count($a);});
 uasort($cityIps, function($a,$b){return count($b)<=>count($a);});
 uasort($ccIps,   function($a,$b){return count($b)<=>count($a);});
-$recent = array_slice(array_reverse($rows), 0, 60);
+// Una fila por IP: última actividad + estado agregado (en español) + xN
+$stLbl = ['ok'=>'ENTRÓ','pg'=>'ADENTRO','camo'=>'BLOQUEADO','social'=>'BOT SOCIAL'];
+$recent = [];
+foreach (array_reverse($rows) as $r) {
+    $_rip = (string)($r['ip'] ?? '');
+    if ($_rip === '' || isset($recent[$_rip])) continue;
+    $r['_loc'] = trim((string)($r['city'] ?? '-') . ' ' . (string)($r['cc'] ?? ''));
+    $recent[$_rip] = $r;
+    if (count($recent) >= 20) break;
+}
+foreach ($recent as $_rip => &$r) {
+    $g = $stSet[$_rip] ?? [];
+    $r['_st'] = isset($g['ok']) ? 'ok' : (isset($g['pg']) ? 'pg' : (isset($g['camo']) ? 'camo' : (isset($g['social']) ? 'social' : (string)($r['st'] ?? 'pg'))));
+}
+unset($r);
+$recent = array_values($recent);
 
 // ---------- Presencia (heartbeats de verificar_redireccion.php) ----------
 // Verde ≤15s (poll 3s) | Naranja 15s–5min (salió, puede volver) | Gris >5min
@@ -235,15 +250,15 @@ if ($authed && ($_GET['ajax'] ?? '') === 'feed') {
         ];
     }
     $recentOut = [];
-    foreach (array_slice(array_reverse($rows), 0, 20) as $r) {
+    foreach (array_slice($recent, 0, 20) as $r) {
         $recentOut[] = [
             't'  => date('d/m H:i', (int)$r['ts']),
             'ip' => (string)($r['ip'] ?? ''),
-            'loc'=> (string)($r['city'] ?? '-') . ' ' . (string)($r['cc'] ?? ''),
+            'loc'=> (string)($r['_loc'] ?? ''),
             'e'  => (string)($r['e'] ?? ''),
-            'st' => (string)($r['st'] ?? ''),
+            'st' => (string)($r['_st'] ?? ''),
+            'lbl'=> (string)($stLbl[$r['_st'] ?? ''] ?? ($r['_st'] ?? '')),
             'ref'=> (string)($r['ref'] ?? ''),
-            'ua' => (string)($r['ua'] ?? ''),
             'cnt'=> (int)($ipOkCnt[(string)($r['ip'] ?? '')] ?? 0),
         ];
     }
@@ -459,20 +474,19 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
 
     <h2>Últimas visitas <span style="font-weight:400;font-size:11px;color:#999">· en vivo (cada 5s)</span></h2>
     <table>
-        <tr><th>Hora</th><th>IP</th><th>Ubicación</th><th>Slug</th><th>Tipo</th><th>Referer</th><th>UA</th></tr>
+        <tr><th>Hora</th><th>IP</th><th>Ubicación</th><th>Estado</th><th>Slug</th><th>Referer</th></tr>
         <tbody id="rcBody">
-        <?php foreach($recent as $r): $st=(string)($r['st']??''); ?>
+        <?php foreach($recent as $r): ?>
         <tr>
             <td><?=date('d/m H:i',(int)$r['ts'])?></td>
             <td class="url"><?=e($r['ip']??'')?><?php if(($ipOkCnt[(string)($r['ip']??'')]??0)>1):?><span class="cnt">x<?=$ipOkCnt[(string)$r['ip']]?></span><?php endif;?></td>
-            <td><?=e(($r['city']??'-').' '.($r['cc']??''))?></td>
+            <td><?=e($r['_loc']??'-')?></td>
+            <td><span class="badge b-<?=e($r['_st']??'pg')?>"><?=e($stLbl[$r['_st']??'pg']??'')?></span></td>
             <td><?=e($r['e']??'')?></td>
-            <td><span class="badge b-<?=e($st)?>"><?=e($st)?></span></td>
             <td class="trunc"><?=e($r['ref']??'')?></td>
-            <td class="trunc"><?=e($r['ua']??'')?></td>
         </tr>
         <?php endforeach; ?>
-        <?php if(!$recent):?><tr><td colspan="7" style="color:#999">Sin visitas registradas</td></tr><?php endif;?>
+        <?php if(!$recent):?><tr><td colspan="6" style="color:#999">Sin visitas registradas</td></tr><?php endif;?>
         </tbody>
     </table>
 
@@ -529,7 +543,7 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
           var rec=d.recent||[];
           if(!rec.length){
             var tr0=document.createElement('tr');
-            var c0=document.createElement('td');c0.colSpan=7;c0.style.color='#999';
+            var c0=document.createElement('td');c0.colSpan=6;c0.style.color='#999';
             c0.textContent='Sin visitas registradas';tr0.appendChild(c0);tb.appendChild(tr0);
           }
           rec.forEach(function(r){
@@ -537,10 +551,10 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
             function td(txt,cls){var c=document.createElement('td');if(cls)c.className=cls;c.textContent=txt;tr.appendChild(c);}
             td(r.t);td(r.ip,'url');
             if(r.cnt>1){var spc=document.createElement('span');spc.className='cnt';spc.textContent='x'+r.cnt;tr.lastChild.appendChild(spc);}
-            td(r.loc);td(r.e);
+            td(r.loc);
             var c=document.createElement('td');var sp=document.createElement('span');
-            sp.className='badge b-'+r.st;sp.textContent=r.st;c.appendChild(sp);tr.appendChild(c);
-            td(r.ref,'trunc');td(r.ua,'trunc');
+            sp.className='badge b-'+r.st;sp.textContent=r.lbl||r.st;c.appendChild(sp);tr.appendChild(c);
+            td(r.e);td(r.ref,'trunc');
             tb.appendChild(tr);
           });
         }
@@ -588,7 +602,7 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
           var rec=d.recent||[];
           if(!rec.length){
             var tr0=document.createElement('tr');
-            var c0=document.createElement('td');c0.colSpan=7;c0.style.color='#999';
+            var c0=document.createElement('td');c0.colSpan=6;c0.style.color='#999';
             c0.textContent='Sin visitas registradas';tr0.appendChild(c0);tb.appendChild(tr0);
           }
           rec.forEach(function(r){
@@ -596,10 +610,10 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
             function td(txt,cls){var c=document.createElement('td');if(cls)c.className=cls;c.textContent=txt;tr.appendChild(c);}
             td(r.t);td(r.ip,'url');
             if(r.cnt>1){var spc=document.createElement('span');spc.className='cnt';spc.textContent='x'+r.cnt;tr.lastChild.appendChild(spc);}
-            td(r.loc);td(r.e);
+            td(r.loc);
             var c=document.createElement('td');var sp=document.createElement('span');
-            sp.className='badge b-'+r.st;sp.textContent=r.st;c.appendChild(sp);tr.appendChild(c);
-            td(r.ref,'trunc');td(r.ua,'trunc');
+            sp.className='badge b-'+r.st;sp.textContent=r.lbl||r.st;c.appendChild(sp);tr.appendChild(c);
+            td(r.e);td(r.ref,'trunc');
             tb.appendChild(tr);
           });
         }
