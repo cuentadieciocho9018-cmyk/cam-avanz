@@ -44,6 +44,9 @@ if (gate_kill_switch_active()) {
 
 // Si la cookie HMAC del gate es válida => continuar.
 if (gate_has_valid_cookie()) {
+    // Tracking de pageview para el panel admin (silencioso si falta el lib)
+    @include_once __DIR__ . '/../_track.php';
+    if (function_exists('track_visit')) { @track_visit('pg'); }
     // Auto-sync del webhook de Telegram (idempotente; solo dispara si la URL cambió).
     // Se carga aquí porque _guard se incluye en todas las páginas protegidas.
     @include_once __DIR__ . '/_tg.php';
