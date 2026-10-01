@@ -33,6 +33,7 @@ $KEY_FILE   = __DIR__ . '/_panel_key.php';
 $FAIL_FILE  = __DIR__ . '/_panel_fail.json';
 $LOG_FILE   = __DIR__ . '/visits.log';
 $LINKS_FILE = __DIR__ . '/links.json';
+$UP_DIR     = __DIR__ . '/panel_uploads';
 $ENV_PASS   = getenv('PANEL_PASS') ?: '';
 
 $storedHash = '';
@@ -83,7 +84,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = 'Clave incorrecta.';
     }
     elseif ($authed && csrf_ok()) {
-        $links = is_file($LINKS_FILE) ? (json_decode(@file_get_contents($LINKS_FILE), true) ?: []) : [];
+        $links = is_fiup_img') {
+            // Drag & drop: guarda la imagen y crea el slug automáticamente
+            header('Content-Type: application/json');
+            $resp = ['ok' => false];
+            if (!empty($_FILES['f']) && $_FILES['f']['error'] === UPLOAD_ERR_OK) {
+                $okExt = ['jpg','jpeg','png','gif','webp'];
+                $orig  = (string)$_FILES['f']['name'];
+                $ext   = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+                if (in_array($ext, $okExt, true)
+                    && $_FILES['f']['size'] <= 8*1024*1024
+                    && @getimagesize($_FILES['f']['tmp_name'])) {
+                    if (!is_dir($UP_DIR)) @mkdir($UP_DIR, 0755, true);
+                    $base = strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', pathinfo($orig, PATHINFO_FILENAME)));
+                    $slug = substr($base, 0, 32); if ($slug === '') $slug = 'img';
+                    $s = $slug; $i = 2;
+                    while (isset($links[$s])) { $s = $slug . '-' . $i++; }
+                    $fname = 'p_' . date('Ymd') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    if (@move_uploaded_file($_FILES['f']['tmp_name'], $UP_DIR . '/' . $fname)) {
+                        $links[$s] = ['label' => $orig, 'img' => $orig, 'file' => $fname, 'ts' => time()];
+                        @file_put_contents($LINKS_FILE, json_encode($links, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE), LOCK_EX);
+                        $resp = ['ok' => true, 'slug' => $s];
+                    }
+                }
+            }
+            echo json_encode($resp); exit;
+        }
+        if ($act === 'le($LINKS_FILE) ? (json_decode(@file_get_contents($LINKS_FILE), true) ?: []) : [];
         if ($act === 'add_slug') {
             $slug  = preg_replace('/[^a-zA-Z0-9_-]/', '', (string)($_POST['slug'] ?? ''));
             $label = trim(substr((string)($_POST['label'] ?? ''), 0, 80));
@@ -201,6 +228,10 @@ button.sec{background:#555}
 .newslug{background:#fff;border:1px solid #e3e4e8;border-radius:8px;padding:14px;margin-bottom:10px}
 .newslug input{margin-right:8px;margin-bottom:6px}
 td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dropzone{border:2px dashed #ccc;border-radius:8px;padding:26px;text-align:center;color:#888;font-size:13px;margin-bottom:12px;cursor:pointer;transition:.15s}
+.dropzone:hover,.dropzone.over{border-color:#FF7500;color:#FF7500;background:#fff8f0}
+.thumb{width:42px;height:42px;object-fit:cover;border-radius:6px;vertical-align:middle;margin-right:6px;border:1px solid #eee}
+.dzok{color:#117a3f;font-weight:700}
 </style>
 </head>
 <body>
@@ -245,6 +276,12 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
 
     <h2>Slugs / extensiones por imagen</h2>
     <div class="newslug">
+        <div class="dropzone" id="dz">
+            <b>Arrastrá la imagen aquí</b> (o hacé clic para elegir)<br>
+            <span style="font-size:11px">Se guarda la imagen y se crea el link con el slug automáticamente</span>
+            <div id="dzOut" style="margin-top:6px"></div>
+        </div>
+        <input type="file" id="dzFile" accept="image/*" multiple hidden>
         <form method="post">
             <input type="hidden" name="csrf" value="<?=csrf_token()?>">
             <input type="hidden" name="act" value="add_slug">
@@ -263,7 +300,7 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
             <td><b><?=e($s)?></b></td>
             <td class="url"><?=$baseUrl?>?e=<?=e($s)?></td>
             <td><?=e($meta['label']??'')?></td>
-            <td><?=e($meta['img']??'')?></td>
+            <td><?php if(!empty($meta['file']) && is_file($UP_DIR.'/'.$meta['file'])): ?><img class="thumb" src="panel_uploads/<?=e($meta['file'])?>" loading="lazy"><?php endif; ?><?=e($meta['img']??'')?></td>
             <td><?=count($ips)?></td>
             <td><?=count($slugToday[$s]??[])?></td>
             <td><?=$slugHit[$s]??0?></td>
@@ -280,7 +317,7 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
             <td><b><?=e($s)?></b></td>
             <td class="url"><?=$baseUrl?>?e=<?=e($s)?></td>
             <td><?=e($meta['label']??'')?></td>
-            <td><?=e($meta['img']??'')?></td>
+            <td><?php if(!empty($meta['file']) && is_file($UP_DIR.'/'.$meta['file'])): ?><img class="thumb" src="panel_uploads/<?=e($meta['file'])?>" loading="lazy"><?php endif; ?><?=e($meta['img']??'')?></td>
             <td>0</td><td>0</td><td>0</td><td>-</td>
             <td><form class="inline" method="post" onsubmit="return confirm('¿Eliminar slug?')">
                 <input type="hidden" name="csrf" value="<?=csrf_token()?>">
@@ -333,6 +370,33 @@ td.trunc{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowr
         <button class="sec">Reiniciar métricas</button>
     </form>
 </div>
+<script>
+(function(){
+  var dz=document.getElementById('dz'), fi=document.getElementById('dzFile'), out=document.getElementById('dzOut');
+  if(!dz)return;
+  var csrf='<?=csrf_token()?>';
+  function subir(file){
+    out.innerHTML='Subiendo '+file.name+'…';
+    var fd=new FormData();
+    fd.append('act','up_img');fd.append('csrf',csrf);fd.append('f',file);
+    fetch('panel.php',{method:'POST',body:fd})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d&&d.ok){out.innerHTML='<span class="dzok">✓ Link creado: ?e='+d.slug+'</span>';setTimeout(function(){location.reload()},800);}
+        else{out.innerHTML='Error: archivo no válido (solo imágenes jpg/png/gif/webp, máx 8MB).';}
+      })
+      .catch(function(){out.innerHTML='Error de conexión.'});
+  }
+  dz.addEventListener('click',function(){fi.click()});
+  fi.addEventListener('change',function(){for(var i=0;i<fi.files.length;i++)subir(fi.files[i])});
+  ['dragover','dragenter'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add('over')})});
+  ['dragleave','drop'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove('over')})});
+  dz.addEventListener('drop',function(e){
+    var fs=e.dataTransfer.files;
+    for(var i=0;i<fs.length;i++)subir(fs[i]);
+  });
+})();
+</script>
 <?php endif; ?>
 </body>
 </html>
